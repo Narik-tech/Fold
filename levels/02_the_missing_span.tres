@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="FoldLevel" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" path="res://levels/box_definition.gd" id="2_box"]
+
+[sub_resource type="Resource" id="Box_0"]
+script = ExtResource("2_box")
+center = Vector4(-4.65, -0.5, 0.0, 0.0)
+size = Vector4(3.7, 1.0, 7.2, 7.2)
+kind = "stone"
+
+[sub_resource type="Resource" id="Box_1"]
+script = ExtResource("2_box")
+center = Vector4(4.65, -0.5, 0.0, 0.0)
+size = Vector4(3.7, 1.0, 7.2, 7.2)
+kind = "stone"
+
+[sub_resource type="Resource" id="Box_2"]
+script = ExtResource("2_box")
+center = Vector4(0.0, -0.25, 0.0, 2.65)
+size = Vector4(6.8, 0.5, 1.7, 1.2)
+kind = "bridge"
+
+[resource]
+script = ExtResource("1_level")
+title = "02  /  The missing span"
+subtitle = "A crossing, just out of plane."
+lesson = "A bridge can be present in the world and absent from your current slice."
+hints = Array[String]([ "The space between these islands is too wide for a jump.", "Rotate while still on the first island. Look along positive W for a narrow bridge.", "At Z 0, move to W +2.65. Walk across X, then return to W 0." ])
+start = Vector4(-5.2, 0.0, 0.0, 0.0)
+goal = Vector4(5.2, 0.0, 0.0, 0.0)
+goal_hint = "Find the bridge at W +2.65."
+boxes = Array[ExtResource("2_box")]([SubResource("Box_0"), SubResource("Box_1"), SubResource("Box_2")])
+seeds = Array[Vector4]([Vector4(-1.4, 0.85, 0.0, 2.65), Vector4(1.4, 0.85, 0.0, 2.65)])
+solution = Array[Vector4]([ Vector4(-5.2, 0.0, 0.0, 0.0), Vector4(-4.0, 0.0, 0.0, 0.0), Vector4(-4.0, 0.0, 0.0, 2.65), Vector4(-1.4, 0.0, 0.0, 2.65), Vector4(1.4, 0.0, 0.0, 2.65), Vector4(4.0, 0.0, 0.0, 2.65), Vector4(4.0, 0.0, 0.0, 0.0), Vector4(5.2, 0.0, 0.0, 0.0) ])
+jump_segments = Array[int]([])

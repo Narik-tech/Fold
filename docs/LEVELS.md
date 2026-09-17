@@ -2,7 +2,7 @@
 
 These three original levels introduce movement through four spatial coordinates. X is always available, Y is height, and rotating exchanges the visible depth direction between Z and W. Rotation preserves the player's coordinates, including the hidden coordinate. Solving a puzzle therefore changes the player's position in four dimensions; it does not toggle arbitrary geometry.
 
-All coordinates below are `(X, Y, Z, W)` at the player's feet. Collectible coordinates in `level_data.gd` are floating centers, 0.85 units above the intended standing surface. The level data also includes deterministic resting waypoints under `solution` and zero-based `jump_segments`: a value of 7 means jump from waypoint 7 to waypoint 8. `LevelData.solutions()` returns all waypoint arrays.
+All coordinates below are `(X, Y, Z, W)` at the player's feet. Collectible coordinates in the `levels/*.tres` resources are floating centers, 0.85 units above the intended standing surface. Each resource also includes deterministic resting waypoints under `solution` and zero-based `jump_segments`: a value of 7 means jump from waypoint 7 to waypoint 8. `LevelData.solutions()` returns all waypoint arrays. Create and edit gardens visually using [FOLD Levels](LEVEL_EDITOR.md).
 
 ## 01 / A direction unseen
 

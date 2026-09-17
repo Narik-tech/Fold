@@ -147,10 +147,10 @@ func _test_repeat_loading() -> void:
 			game._select_level(index)
 			var worlds: int = 0
 			for child: Node in game.get_children():
-				if child.name == &"FourDimensionalGarden":
+				if child.name == &"World":
 					worlds += 1
-			_expect(worlds == 1 and game.world_root.name == &"FourDimensionalGarden" and game.world_root.get_parent() == game, "Reload %d/%d retains one attached world" % [iteration, index])
-			_expect(game.box_visuals.size() == game.level.boxes.size() and game.seed_visuals.size() == game.level.seeds.size(), "Reload %d/%d rebuilds the expected visual arrays" % [iteration, index])
+			_expect(worlds == 1 and game.world.get_parent() == game and game.world.level_root.get_parent() == game.world, "Reload %d/%d retains one attached world with owned level geometry" % [iteration, index])
+			_expect(game.world.box_visuals.size() == game.level.boxes.size() and game.world.seed_visuals.size() == game.level.seeds.size(), "Reload %d/%d rebuilds the expected visual arrays" % [iteration, index])
 			_expect(game._collected_count() == 0 and not game.completed, "Reload %d/%d resets objectives" % [iteration, index])
 			_expect(game.position4 == game.level.start and game.grounded and game.active_axis == 0 and not game.rotating, "Reload %d/%d resets traversal state" % [iteration, index])
 

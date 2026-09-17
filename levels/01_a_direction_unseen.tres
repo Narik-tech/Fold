@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="FoldLevel" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" path="res://levels/box_definition.gd" id="2_box"]
+
+[sub_resource type="Resource" id="Box_0"]
+script = ExtResource("2_box")
+center = Vector4(0.0, -0.5, 0.0, 0.0)
+size = Vector4(13.0, 1.0, 7.2, 7.2)
+kind = "stone"
+
+[sub_resource type="Resource" id="Box_1"]
+script = ExtResource("2_box")
+center = Vector4(0.0, 1.85, 0.0, 0.0)
+size = Vector4(0.65, 3.7, 10.0, 1.6)
+kind = "wall"
+
+[resource]
+script = ExtResource("1_level")
+title = "01  /  A direction unseen"
+subtitle = "The wall has another edge."
+lesson = "Rotate your view to walk along W. The same place can open in another direction."
+hints = Array[String]([ "This wall fills the Z direction, but it is thin along W.", "Before the wall, rotate to reveal W and walk toward W +2.4.", "Cross the wall's X position, collect the echo, then return to W 0 for the exit." ])
+start = Vector4(-5.1, 0.0, 0.0, 0.0)
+goal = Vector4(5.15, 0.0, 0.0, 0.0)
+goal_hint = "Return to W 0 on the far side."
+boxes = Array[ExtResource("2_box")]([SubResource("Box_0"), SubResource("Box_1")])
+seeds = Array[Vector4]([Vector4(0.0, 0.85, 0.0, 2.4)])
+solution = Array[Vector4]([ Vector4(-5.1, 0.0, 0.0, 0.0), Vector4(-2.2, 0.0, 0.0, 0.0), Vector4(-2.2, 0.0, 0.0, 2.4), Vector4(0.0, 0.0, 0.0, 2.4), Vector4(2.2, 0.0, 0.0, 2.4), Vector4(2.2, 0.0, 0.0, 0.0), Vector4(5.15, 0.0, 0.0, 0.0) ])
+jump_segments = Array[int]([])

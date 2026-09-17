@@ -1,5 +1,6 @@
 .godot/
 .tools/
 builds/
-test-output/
+test-output/*
+!test-output/.gdignore
 *.tmp

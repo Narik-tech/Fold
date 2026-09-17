@@ -58,6 +58,8 @@ var _next_button: Button
 var _toast_panel: PanelContainer
 var _toast_label: Label
 var _level_buttons: Array[Button] = []
+var _level_nav: HBoxContainer
+var _custom_level: bool = false
 var _toast_time: float = 0.0
 var _final_level: bool = false
 var _built: bool = false
@@ -144,22 +146,12 @@ func _build_topbar() -> void:
 	chapter.add_child(_title_label)
 	_subtitle_label = _label("A garden with another side.", 12, MUTED)
 	chapter.add_child(_subtitle_label)
-	var nav := HBoxContainer.new()
-	_game_ui.add_child(nav)
-	nav.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	nav.offset_left = -80
-	nav.offset_right = 81
-	nav.offset_top = 29
-	nav.offset_bottom = 71
-	nav.add_theme_constant_override("separation", 7)
-	for index: int in range(3):
-		var button := _button("%02d" % (index + 1))
-		button.custom_minimum_size = Vector2(43, 32)
-		button.add_theme_font_size_override("font_size", 11)
-		button.add_theme_stylebox_override("normal", _style(Color(0.05, 0.14, 0.14, 0.68), Color(0.5, 0.72, 0.65, 0.18), 6))
-		button.pressed.connect(func() -> void: level_requested.emit(index))
-		nav.add_child(button)
-		_level_buttons.append(button)
+	_level_nav = HBoxContainer.new()
+	_game_ui.add_child(_level_nav)
+	_level_nav.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_level_nav.offset_top = 29
+	_level_nav.offset_bottom = 71
+	_level_nav.add_theme_constant_override("separation", 7)
 	var seeds := VBoxContainer.new()
 	_game_ui.add_child(seeds)
 	seeds.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -394,9 +386,32 @@ func _on_next_pressed() -> void:
 	else:
 		next_requested.emit()
 
+func set_custom_level(value: bool) -> void:
+	_custom_level = value
+
+func _setup_navigation(total: int) -> void:
+	if _level_buttons.size() != total:
+		for button: Button in _level_buttons:
+			_level_nav.remove_child(button)
+			button.queue_free()
+		_level_buttons.clear()
+		for index: int in range(total):
+			var button := _button("%02d" % (index + 1))
+			button.custom_minimum_size = Vector2(43, 32)
+			button.add_theme_font_size_override("font_size", 11)
+			button.add_theme_stylebox_override("normal", _style(Color(0.05, 0.14, 0.14, 0.68), Color(0.5, 0.72, 0.65, 0.18), 6))
+			button.pressed.connect(func() -> void: level_requested.emit(index))
+			_level_nav.add_child(button)
+			_level_buttons.append(button)
+	var nav_width := total * 43.0 + maxi(total - 1, 0) * 7.0
+	_level_nav.offset_left = -nav_width / 2.0
+	_level_nav.offset_right = nav_width / 2.0
+	_level_nav.visible = total > 1
+
 func setup_level(index: int, total: int, title: String, subtitle: String, lesson: String, seed_count: int) -> void:
 	_build()
-	_chapter_label.text = "F O L D     /     CHAPTER %02d OF %02d" % [index + 1, total]
+	_setup_navigation(total)
+	_chapter_label.text = "F O L D     /     CUSTOM GARDEN" if _custom_level else "F O L D     /     CHAPTER %02d OF %02d" % [index + 1, total]
 	_title_label.text = title
 	_subtitle_label.text = subtitle
 	_current_lesson = lesson
@@ -443,6 +458,10 @@ func show_completion(final_level: bool) -> void:
 	_completion_title.text = "A world made wider" if final_level else "A path revealed"
 	_completion_copy.text = "You found every garden's hidden side.\nThere is always another way to see." if final_level else "Another perspective. Another possibility.\nYour next garden is waiting."
 	_next_button.text = "Return to the first garden   ↺" if final_level else "The next garden   →"
+	if _custom_level:
+		_completion_title.text = "Your garden, explored"
+		_completion_copy.text = "Every echo found. A path to the gate.\nReturn to the editor to keep creating."
+		_next_button.text = "Play this garden again   ↺"
 	_pause_overlay.hide()
 	_completion_overlay.show()
 
