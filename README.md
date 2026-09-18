@@ -31,6 +31,8 @@ Alternatively, import **project.godot** into Godot 4.6 or newer and press **F5**
 
 Fold while standing, moving, jumping, or falling. Hold Q or E to rotate at 90° per second, and release to keep any slice angle. Movement follows the changing slice while jump momentum and gravity continue normally. Rotation continues through a full circle. Find every echo in the garden, then enter its gate. Falling returns you to the start or your latest checkpoint and preserves collected echoes; restarting clears the garden. The orientation panel shows your slice angle, identifies mixed Z/W views, and displays your coordinates. Press H for route guidance.
 
+The soundtrack uses sparse, soft notes over a quiet 32-second ambient phrase. Folding gives a short air sound; repeated taps cannot stack it. Music fades in at startup and when unmuting. Press **M** to toggle all sound.
+
 The third-person camera follows the traveler, and the mouse controls its direction and pitch. WASD and arrow keys stay relative to the camera as you look around: W moves into the view, S moves toward the camera, and A/D move left/right across the view. The traveler faces the direction of movement, while the camera moves closer when walls or solid edges obstruct the view. Starting or resuming captures the cursor for mouse look; Escape pauses and frees it for the menu. Restarting or respawning resets the camera behind the traveler, facing toward the gate.
 
 ## Gardens
@@ -86,6 +88,7 @@ Run tests from the project directory (replace the executable with your Godot pat
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_maze_features.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_shape_course.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_interactions.gd
+& '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_soundscape.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_camera.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_level_resources.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_custom_levels.gd
