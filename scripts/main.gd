@@ -54,6 +54,7 @@ func _ready() -> void:
 	hud.level_requested.connect(_select_level)
 	hud.hint_requested.connect(_hint)
 	hud.pause_requested.connect(_toggle_pause)
+	hud.quit_requested.connect(_quit_to_desktop)
 	levels = Levels.all_levels()
 	hud.set_custom_level(false)
 	_load_level(0)
@@ -391,6 +392,13 @@ func _select_level(index: int) -> void:
 	started = true
 	_sync_mouse_mode()
 	hud.hide_title()
+
+func _quit_to_desktop() -> void:
+	# Release looping audio and return the cursor before closing the game.
+	sound.stop_all()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	get_tree().quit()
+
 
 func _toggle_pause() -> void:
 	if not started or completed:

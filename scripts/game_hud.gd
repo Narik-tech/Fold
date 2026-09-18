@@ -7,6 +7,7 @@ signal next_requested
 signal level_requested(index: int)
 signal hint_requested
 signal pause_requested
+signal quit_requested
 
 const INK := Color("e8e8d8")
 const MUTED := Color("a8bcb5")
@@ -372,7 +373,7 @@ func _build_title() -> void:
 
 func _build_pause() -> void:
 	_pause_overlay = _overlay()
-	var box := _overlay_box(_pause_overlay, 400, 400)
+	var box := _overlay_box(_pause_overlay, 400, 452)
 	_center_label(box, "TAKE A BREATH", 11, TEAL)
 	_center_label(box, "A quiet moment", 35)
 	_center_label(box, "The garden will be here.", 14, MUTED)
@@ -392,6 +393,9 @@ func _build_pause() -> void:
 	_pause_level_nav.add_theme_constant_override("separation", 7)
 	_pause_chapters.add_child(_pause_level_nav)
 	_pause_chapters.hide()
+	var quit := _button("Quit to desktop")
+	quit.pressed.connect(func() -> void: quit_requested.emit())
+	box.add_child(quit)
 	_center_label(box, "Cursor is free. ESC to return to mouse look.", 11, MUTED)
 	_pause_overlay.hide()
 
