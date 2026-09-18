@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="FoldLevel" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" path="res://levels/box_definition.gd" id="2_box"]
+[ext_resource type="Script" path="res://levels/shape_definition.gd" id="3_shape"]
+
+[sub_resource type="Resource" id="Floor"]
+script = ExtResource("2_box")
+center = Vector4(0, -0.5, 0, 0)
+size = Vector4(16, 1, 14, 14)
+kind = "stone"
+
+[sub_resource type="Resource" id="Shape"]
+script = ExtResource("3_shape")
+kind = "24-cell"
+center = Vector4(0, 2, 0, 0)
+scale = 5.0
+edge_thickness = 0.14
+
+[resource]
+script = ExtResource("1_level")
+title = "Shape sample / 24-cell"
+subtitle = "A garden of octahedral cells."
+lesson = "Walk inside the 24-cell's open edge network, then fold to see another cross-section of the same shape."
+hints = Array[String](["Head toward the center echo. The shape has solid edges and an open interior.", "At X 0, press Q or E and explore W +1.5 to collect the second echo.", "Bring W back to 0 and walk to the amber gate at X +6."])
+start = Vector4(-6, 0, 0.65, 0)
+goal = Vector4(6, 0, 0.65, 0)
+goal_hint = "Collect the two interior echoes, then return to the W 0 gate."
+boxes = Array[ExtResource("2_box")]([SubResource("Floor")])
+shapes = Array[ExtResource("3_shape")]([SubResource("Shape")])
+seeds = Array[Vector4]([Vector4(0, 0.85, 0.65, 0), Vector4(0, 0.85, 0.65, 1.5)])
+solution = Array[Vector4]([Vector4(-6, 0, 0.65, 0), Vector4(0, 0, 0.65, 0), Vector4(0, 0, 0.65, 1.5), Vector4(0, 0, 0.65, 0), Vector4(6, 0, 0.65, 0)])
+jump_segments = Array[int]([])

@@ -6,6 +6,7 @@ signal object_selected(index: int)
 signal object_moved(index: int, position: Vector4)
 
 const Document = preload("res://addons/fold_level_editor/level_document.gd")
+const Polytopes = preload("res://scripts/polytope_geometry.gd")
 const BACKGROUND := Color("15242d")
 const GRID_COLOR := Color("243942")
 const TEXT_COLOR := Color("c7e1df")
@@ -106,6 +107,8 @@ func _object_color(index: int) -> Color:
 		return Color("72d5ca")
 	if index == 1:
 		return Color("f2be69")
+	if document.is_shape(index):
+		return Color("79d8ed")
 	if not document.is_box(index):
 		return Color("c4a0ff")
 	match document.level.boxes[index - 2].kind:
@@ -128,6 +131,9 @@ func _object_rect(index: int) -> Rect2:
 
 
 func _draw_object(index: int, selected_outline: bool = false) -> void:
+	if document.is_shape(index):
+		_draw_shape(index, selected_outline)
+		return
 	var position := _object_position(index)
 	var dimensions: Vector4 = document.object_size(index)
 	var in_slice := absf(position[hidden_axis()] - slice_position) <= dimensions[hidden_axis()] * 0.5
@@ -151,16 +157,81 @@ func _draw_object(index: int, selected_outline: bool = false) -> void:
 	draw_string(get_theme_default_font(), text_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(TEXT_COLOR, 1.0 if in_slice else 0.36))
 
 
+func _project_point(point: Vector4) -> Vector2:
+	return world_to_canvas(Vector2(point.x, point[vertical_axis]))
+
+
+func _shape_vertices(index: int) -> Array[Vector4]:
+	var shape: FoldShape = document.shape_at(index)
+	var vertices: Array[Vector4] = []
+	for vertex: Vector4 in Polytopes.topology(shape.kind).vertices:
+		vertices.append(_object_position(index) + vertex * shape.scale)
+	return vertices
+
+
+func _slice_segment(a: Vector4, b: Vector4, thickness: float) -> PackedFloat32Array:
+	# Clip the edge's centerline to the current hidden-axis slab. The complete
+	# wireframe stays dimly visible so its connectivity is legible in both views.
+	var hidden := hidden_axis()
+	var delta := b[hidden] - a[hidden]
+	var half := thickness * 0.5
+	if absf(delta) < 0.000001:
+		return PackedFloat32Array([0.0, 1.0]) if absf(a[hidden] - slice_position) <= half else PackedFloat32Array()
+	var first := (slice_position - half - a[hidden]) / delta
+	var last := (slice_position + half - a[hidden]) / delta
+	var lower := maxf(0.0, minf(first, last))
+	var upper := minf(1.0, maxf(first, last))
+	return PackedFloat32Array([lower, upper]) if lower <= upper else PackedFloat32Array()
+
+
+func _draw_shape(index: int, selected_outline: bool) -> void:
+	var shape: FoldShape = document.shape_at(index)
+	var vertices := _shape_vertices(index)
+	var color := Color.WHITE if selected_outline else _object_color(index)
+	var width := 2.8 if selected_outline else 1.5
+	for edge: Vector2i in Polytopes.topology(shape.kind).edges:
+		var a: Vector4 = vertices[edge.x]
+		var b: Vector4 = vertices[edge.y]
+		draw_line(_project_point(a), _project_point(b), Color(color, 0.24 if selected_outline else 0.18), width, true)
+		var interval := _slice_segment(a, b, shape.edge_thickness)
+		if not interval.is_empty():
+			draw_line(_project_point(a.lerp(b, interval[0])), _project_point(a.lerp(b, interval[1])), Color(color, 0.95), width, true)
+	var center := _project_point(_object_position(index))
+	draw_circle(center, 10.0 if selected_outline else 5.0, Color(color, 0.95), false, 1.5, true)
+	if not selected_outline:
+		var text := "%s  Y %.2f" % [document.object_name(index), _object_position(index).y]
+		draw_string(get_theme_default_font(), center + Vector2(14.0, -12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, TEXT_COLOR)
+
+
 func _hit_test(point: Vector2) -> int:
+	# Markers take precedence, followed by actual frame edges or their center
+	# handles. Empty projected interiors never act like filled shape hit boxes.
+	for index in document.object_count():
+		if not document.is_box(index) and not document.is_shape(index):
+			if point.distance_to(_object_rect(index).get_center()) <= 15.0:
+				return index
+	var shape_hit := -1
+	var nearest := INF
+	for index in range(2 + document.level.boxes.size(), 2 + document.level.boxes.size() + document.level.shapes.size()):
+		var distance := point.distance_to(_project_point(_object_position(index)))
+		var vertices := _shape_vertices(index)
+		var shape: FoldShape = document.shape_at(index)
+		for edge: Vector2i in Polytopes.topology(shape.kind).edges:
+			var closest := Geometry2D.get_closest_point_to_segment(point, _project_point(vertices[edge.x]), _project_point(vertices[edge.y]))
+			distance = minf(distance, point.distance_to(closest))
+		if distance <= 8.0 and distance < nearest:
+			shape_hit = index
+			nearest = distance
+	if shape_hit >= 0:
+		return shape_hit
 	# Smallest hit wins among boxes so floor volumes cannot hide walls/steps.
 	var found := -1
 	var area := INF
 	for index in document.object_count():
-		var rect := _object_rect(index)
 		if not document.is_box(index):
-			if point.distance_to(rect.get_center()) <= 15.0:
-				return index
-		elif rect.grow(3.0).has_point(point) and rect.get_area() < area:
+			continue
+		var rect := _object_rect(index)
+		if rect.grow(3.0).has_point(point) and rect.get_area() < area:
 			found = index
 			area = rect.get_area()
 	return found

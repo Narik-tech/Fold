@@ -5,6 +5,7 @@ extends VBoxContainer
 
 const Document = preload("res://addons/fold_level_editor/level_document.gd")
 const Canvas = preload("res://addons/fold_level_editor/level_canvas.gd")
+const Polytopes = preload("res://scripts/polytope_geometry.gd")
 const DRAFT_PATH := "user://fold_editor_draft.tres"
 const PREVIEW_PATH := "user://fold_editor_playtest.tres"
 
@@ -24,6 +25,12 @@ var _restore_button: Button
 var _position_fields: Array[SpinBox] = []
 var _size_fields: Array[SpinBox] = []
 var _size_group: VBoxContainer
+var _shape_group: VBoxContainer
+var _shape_kind: OptionButton
+var _shape_scale: SpinBox
+var _edge_thickness: SpinBox
+var _shape_details: Label
+var _samples_menu: MenuButton
 var _metadata_fields: Dictionary = {}
 var _open_dialog: FileDialog
 var _save_dialog: FileDialog
@@ -85,6 +92,13 @@ func _build_toolbar() -> void:
 	add_child(toolbar)
 	_button(toolbar, "New", func(): _guard_changes(_new_level), "Create a playable starter platform")
 	_button(toolbar, "Open…", func(): _guard_changes(_show_open), "Open a FoldLevel .tres resource; editing uses an independent copy")
+	_samples_menu = MenuButton.new()
+	_samples_menu.text = "4D Samples"
+	_samples_menu.tooltip_text = "Open a simple playable garden for each regular 4D shape"
+	for kind: String in Polytopes.TYPES:
+		_samples_menu.get_popup().add_item(Document.SHAPE_LABELS[kind])
+	_samples_menu.get_popup().id_pressed.connect(_open_sample)
+	toolbar.add_child(_samples_menu)
 	_button(toolbar, "Save", _save, "Save validated level (Ctrl+S)")
 	_button(toolbar, "Save As…", _show_save_as, "Save a copy, usually in res://levels/custom/")
 	_undo_button = _button(toolbar, "Undo", _undo, "Undo level edit (Ctrl+Z)")
@@ -116,6 +130,14 @@ func _build_workspace() -> void:
 	objects_column.add_child(add_grid)
 	for pair in [["+ Floor", "stone"], ["+ Wall", "wall"], ["+ Bridge", "bridge"], ["+ Step", "step"], ["+ Echo", "echo"]]:
 		_button(add_grid, pair[0], _add_object.bind(pair[1]))
+	_label(objects_column, "4D EDGE FRAMES")
+	_shape_kind = OptionButton.new()
+	for kind: String in Polytopes.TYPES:
+		_shape_kind.add_item(Document.SHAPE_LABELS[kind])
+	_shape_kind.select(Polytopes.TYPES.find("tesseract"))
+	_shape_kind.tooltip_text = "Six regular convex 4D polytopes; only their edges are solid"
+	objects_column.add_child(_shape_kind)
+	_button(objects_column, "+ 4D Shape", _add_selected_shape, "Add one scalable edge frame; move, duplicate, and delete it as a single object")
 	_duplicate_button = _button(objects_column, "Duplicate", _duplicate_selected)
 	_delete_button = _button(objects_column, "Delete", _delete_selected, "Start and Goal are required and cannot be deleted")
 	var content := HSplitContainer.new()
@@ -127,6 +149,7 @@ func _build_workspace() -> void:
 	var view_controls := HBoxContainer.new()
 	viewport.add_child(view_controls)
 	var projection := OptionButton.new()
+	projection.name = "Projection"
 	projection.add_item("Top view: X / Z")
 	projection.add_item("Top view: X / W")
 	projection.item_selected.connect(_set_projection)
@@ -193,6 +216,22 @@ func _build_object_inspector(parent: Node) -> void:
 		field.value_changed.connect(_size_changed.bind(axis))
 		field.get_line_edit().focus_exited.connect(document.break_merge)
 		_size_fields.append(field)
+	_shape_group = VBoxContainer.new()
+	column.add_child(_shape_group)
+	_label(_shape_group, "Scale · center to vertex")
+	_shape_scale = _spin(_shape_group, 0.001, 10000.0, 0.001)
+	_shape_scale.tooltip_text = "Uniform size in all four axes; vertices lie this far from the center"
+	_shape_scale.value_changed.connect(_shape_scale_changed)
+	_shape_scale.get_line_edit().focus_exited.connect(document.break_merge)
+	_label(_shape_group, "Edge thickness")
+	_edge_thickness = _spin(_shape_group, 0.001, 10000.0, 0.001)
+	_edge_thickness.tooltip_text = "Full width of each solid edge, independent of shape scale"
+	_edge_thickness.value_changed.connect(_edge_thickness_changed)
+	_edge_thickness.get_line_edit().focus_exited.connect(document.break_merge)
+	_shape_details = _label(_shape_group, "")
+	_shape_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var frame_help := _label(_shape_group, "Only edges are solid. Faces and cells are open for walking and folding through. Select any projected edge or the center handle to move the whole frame.")
+	frame_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var help := _label(column, "Y is vertical in both views.\nStart / Goal: Y is feet height.\nEcho: Y is floating center.\nBox top = center Y + size Y ÷ 2.\n\nDimmed objects lie outside the chosen hidden-axis slice. Switch X/Z ↔ X/W to place them.\n\nGeometry edits clear any recorded solution route. Playtest to verify the puzzle.")
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
@@ -308,6 +347,13 @@ func _refresh_properties() -> void:
 		_position_fields[axis].set_value_no_signal(position[axis])
 		_size_fields[axis].set_value_no_signal(dimensions[axis])
 	_size_group.visible = document.is_box(selection)
+	_shape_group.visible = document.is_shape(selection)
+	if document.is_shape(selection):
+		var shape: FoldShape = document.shape_at(selection)
+		_shape_scale.set_value_no_signal(shape.scale)
+		_edge_thickness.set_value_no_signal(shape.edge_thickness)
+		var topology: Dictionary = Polytopes.topology(shape.kind)
+		_shape_details.text = "%d vertices · %d solid edges" % [topology.vertices.size(), topology.edges.size()]
 	_delete_button.disabled = selection < 2
 	_duplicate_button.disabled = selection < 2
 	_refreshing = false
@@ -343,6 +389,16 @@ func _size_changed(value: float, axis: int) -> void:
 	document.set_size(selection, dimensions)
 
 
+func _shape_scale_changed(value: float) -> void:
+	if not _refreshing:
+		document.set_shape_scale(selection, value)
+
+
+func _edge_thickness_changed(value: float) -> void:
+	if not _refreshing:
+		document.set_edge_thickness(selection, value)
+
+
 func _metadata_changed(property: String) -> void:
 	if _refreshing:
 		return
@@ -365,6 +421,22 @@ func _set_projection(index: int) -> void:
 
 func _add_object(kind: String) -> void:
 	_select_object(document.add_object(kind))
+
+
+func _add_selected_shape() -> void:
+	_select_object(document.add_shape(Polytopes.TYPES[_shape_kind.selected]))
+
+
+func _open_sample(index: int) -> void:
+	_guard_changes(_load_sample.bind(index))
+
+
+func _load_sample(index: int) -> void:
+	var kind: String = Polytopes.TYPES[index]
+	var path := "res://levels/samples/%s.tres" % kind.replace("-", "_")
+	_open_level(path)
+	if document.path == path and not document.level.shapes.is_empty():
+		_select_object(2 + document.level.boxes.size())
 
 
 func _duplicate_selected() -> void:

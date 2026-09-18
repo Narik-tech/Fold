@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="FoldLevel" format=3 uid="uid://c2xsdut4lob8m"]
+
+[ext_resource type="Script" uid="uid://cuovfw6cigeoa" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" uid="uid://6lxak7sowd5s" path="res://levels/box_definition.gd" id="2_box"]
+[ext_resource type="Script" uid="uid://bu8syshd4pj6v" path="res://levels/shape_definition.gd" id="3_shape"]
+
+[sub_resource type="Resource" id="Resource_b2xf3"]
+script = ExtResource("2_box")
+center = Vector4(0, -0.5, 0, 0)
+size = Vector4(16, 1, 14, 14)
+
+[sub_resource type="Resource" id="Resource_kym0o"]
+script = ExtResource("3_shape")
+center = Vector4(0, 3, 0, 2.5)
+scale = 5.0
+edge_thickness = 1.0
+
+[resource]
+script = ExtResource("1_level")
+title = "Shape sample / Tesseract"
+subtitle = "A cube with another direction."
+lesson = "Walk through an open tesseract frame. Fold from its near cube into W to inspect its connecting edges."
+hints = Array[String](["The starting W 0 slice passes through one cubic side of the tesseract. Walk through its open face.", "At the center echo, press Q or E and move to W +1.5. The cube's solid faces are absent.", "Return to W 0 and cross the open frame to the amber gate at X +6."])
+start = Vector4(-6, 0, 0.65, 0)
+goal = Vector4(6, 0, 0.65, 0)
+goal_hint = "Collect the center and W +1.5 echoes; the gate is at W 0."
+boxes = Array[ExtResource("2_box")]([SubResource("Resource_b2xf3")])
+shapes = Array[ExtResource("3_shape")]([SubResource("Resource_kym0o")])
+seeds = Array[Vector4]([Vector4(0, 0.85, 0.65, 0), Vector4(0, 0.85, 0.65, 1.5)])

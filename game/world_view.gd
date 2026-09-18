@@ -4,10 +4,15 @@ extends Node3D
 ## The session supplies simulation values explicitly; this scene never reads its parent.
 
 const Geometry = preload("res://scripts/slice_geometry.gd")
+const Edges = preload("res://scripts/edge_geometry.gd")
 
 @onready var level_root: Node3D = $LevelGeometry
 
 var box_visuals: Array[MeshInstance3D] = []
+var shape_visuals: Array[MeshInstance3D] = []
+var shape_fringes: Array[MeshInstance3D] = []
+var shape_solids: Array[Dictionary] = []
+var _shape_slice_key := Vector4(INF, INF, INF, INF)
 var seed_visuals: Array[Node3D] = []
 var camera: Camera3D
 var _level: Dictionary = {}
@@ -35,6 +40,10 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 		level_root.remove_child(child)
 		child.queue_free()
 	box_visuals.clear()
+	shape_visuals.clear()
+	shape_fringes.clear()
+	shape_solids = Edges.compile_shapes(_level.get("shapes", []))
+	_shape_slice_key = Vector4(INF, INF, INF, INF)
 	seed_visuals.clear()
 	decorations.clear()
 	for box: Dictionary in _level.boxes:
@@ -43,6 +52,16 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 		mesh.material_override = materials.get(box.kind, materials.stone)
 		level_root.add_child(mesh)
 		box_visuals.append(mesh)
+	for shape in shape_solids:
+		var mesh := MeshInstance3D.new()
+		mesh.material_override = materials.edge
+		level_root.add_child(mesh)
+		shape_visuals.append(mesh)
+		var fringe := MeshInstance3D.new()
+		fringe.material_override = materials.fringe
+		fringe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		level_root.add_child(fringe)
+		shape_fringes.append(fringe)
 	for seed: Vector4 in _level.seeds:
 		var root := Node3D.new()
 		level_root.add_child(root)
@@ -64,6 +83,7 @@ func update_slice(position4: Vector4, angle: float, active_axis: int, rotating: 
 	if _level.is_empty():
 		return
 	var visible_player_depth := position4.z * cos(angle) + position4.w * sin(angle)
+	_update_shape_slices(position4, angle, active_axis, rotating, player_radius)
 	for i in range(box_visuals.size()):
 		var box: Dictionary = _level.boxes[i]
 		var section: Dictionary = Geometry.slice_box(box.center, box.size, position4, angle)
@@ -104,6 +124,25 @@ func update_slice(position4: Vector4, angle: float, active_axis: int, rotating: 
 	portal_inner.visible = not collected.has(false)
 	if portal_inner.visible:
 		portal_inner.scale.x = 0.92 + sin(clock * 2.5) * 0.08
+
+
+func _update_shape_slices(position4: Vector4, angle: float, active_axis: int,
+		rotating: bool, player_radius: float) -> void:
+	var hidden := -position4.z * sin(angle) + position4.w * cos(angle)
+	var key := Vector4(hidden, angle, 0.0 if rotating else player_radius, float(active_axis))
+	if _shape_slice_key.is_equal_approx(key):
+		return
+	_shape_slice_key = key
+	for index in range(shape_solids.size()):
+		var edges: Array = shape_solids[index].edges
+		var mesh := Edges.slice_mesh(edges, position4, angle)
+		shape_visuals[index].mesh = mesh
+		shape_visuals[index].visible = mesh.get_surface_count() > 0
+		shape_fringes[index].visible = false
+		if not rotating:
+			var fringe := Edges.slice_mesh(edges, position4, angle, player_radius, 3 if active_axis == 0 else 2)
+			shape_fringes[index].mesh = fringe
+			shape_fringes[index].visible = fringe.get_surface_count() > 0
 
 func update_traveler(delta: float, clock: float, position4: Vector4, angle: float,
 		last_motion: Vector2, distance_walked: float, grounded: bool, walking: bool) -> void:
@@ -166,6 +205,7 @@ func _setup_materials() -> void:
 	fringe.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	fringe.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	materials["fringe"] = fringe
+	materials["edge"] = _material(Color("89d0ca"), 0.12)
 
 func _material(color: Color, emission: float = 0.0) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()

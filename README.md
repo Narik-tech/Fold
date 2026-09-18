@@ -38,9 +38,9 @@ These are three short puzzle chambers rather than a full campaign. Progress is k
 
 Every solid, echo, and player position lives in `(x, y, z, w)`. Y is height. X is always available. In the normal view, movement changes Z and preserves W; folding swaps those roles. W is a spatial coordinate, not time or a separate level.
 
-The renderer intersects each 4D axis-aligned box with a 3D hyperplane passing through the player. During the fold, it computes the exact box intersection at every intermediate Z–W angle. Collision remains in 4D, so changing the view never teleports through a solid. Walking pauses during the 0.7-second fold, and folds require ground contact.
+The renderer intersects each 4D solid with a 3D hyperplane passing through the player. Boxes and the solid edge beams of regular 4D shapes have exact cross-sections at every intermediate Z–W fold angle. Collision remains in 4D, so changing the view never teleports through a solid. Walking pauses during the 0.7-second fold, and folds require ground contact.
 
-The prototype supports one rotation plane, axis-aligned 4D solids, and a finite 4D player collision box. Faint silhouettes mark nearby solids touching the traveler's thickness just outside the visible slice. Trees are decorative cross-sections and have no collision. This is a focused implementation of the slice-navigation mechanic, not a general 4D physics engine.
+The prototype supports one rotation plane, axis-aligned 4D boxes, scalable regular 4D edge frames, and a finite 4D player collision box. The 5-cell, tesseract, 16-cell, 24-cell, 120-cell, and 600-cell have solid edges with open faces and interiors that the player can move through. Faint silhouettes mark nearby solids touching the traveler's thickness just outside the visible slice. Trees are decorative cross-sections and have no collision. This is a focused implementation of the slice-navigation mechanic, not a general 4D physics engine.
 
 ## Create a level
 
@@ -48,13 +48,18 @@ Double-click **EDIT_LEVELS.cmd**, or open the project in Godot and select the **
 
 Start with **New**, add platforms and echoes, and drag them on the X/Z or X/W grid. Edit height and all four dimensions in the object controls. Set the start and gate, then use **Playtest** to try the garden in the actual game. Save your creation as a `.tres` file under `levels/custom/`; no scripting is required. See [the level editor guide](docs/LEVEL_EDITOR.md) for controls and geometry tips.
 
+Use **4D EDGE FRAMES → + 4D Shape** to add a **5-cell, tesseract, 16-cell, 24-cell, 120-cell, or 600-cell**. Each has editable X/Y/Z/W position, uniform **Scale**, and independent **Edge thickness**. Scale is the distance from the center to each vertex in world units; increase it to make more room between the solid beams.
+
+Open **4D Samples** in the editor to try one simple level per shape. Each includes a broad floor, two echoes, hints, and a walking route through the open frame with a short W detour. Use **Save As** to adapt a sample. The [shape sample guide](docs/SHAPE_SAMPLES.md) lists the files and explains what a slice shows; these six showcases are separate from the original campaign.
+
 ## Project structure
 
 - `scenes/main.tscn` and `scripts/main.gd`: compose the game systems; coordinate 4D movement, collision, and session state.
 - `game/world_view.tscn` and `game/world_view.gd`: own environment, traveler, level geometry, and slice rendering.
-- `levels/`: typed `FoldLevel` / `FoldBox` resources and the three campaign gardens as editable `.tres` files.
+- `levels/`: typed `FoldLevel` / `FoldBox` / `FoldShape` resources and the three campaign gardens as editable `.tres` files; `levels/samples/` contains six shape showcases.
 - `scripts/level_data.gd`: explicit campaign catalog; returns independent runtime snapshots.
 - `scripts/slice_geometry.gd`: pure slab intersection and collision calculations.
+- `scripts/polytope_geometry.gd` and `scripts/edge_geometry.gd`: regular 4D topology, solid edge beams, exact edge collision, and sliced edge meshes.
 - `scripts/game_hud.gd` and `scripts/soundscape.gd`: UI signals and audio, wired by the main scene controller.
 - `addons/fold_level_editor/`: visual authoring workspace, document history, and projection canvas.
 - `assets/stone.gdshader`: tiled stone and garden surface material.
@@ -70,6 +75,9 @@ Run tests from the project directory (replace the executable with your Godot pat
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_interactions.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_level_resources.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_custom_levels.gd
+& '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_polytope_geometry.gd
+& '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_edge_geometry.gd
+& '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_shape_samples.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_level_editor.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_editor_ui.gd
 ```
@@ -77,5 +85,7 @@ Run tests from the project directory (replace the executable with your Godot pat
 To produce a rendered screenshot in `test-output`, run with `-- --capture` or `-- --capture-title`. Add `--level2`, `--level3`, or `--folded` after the separator to inspect other views.
 
 Run `--script tests/editor_preview.gd` without `--headless` to capture the editor panel at desktop and compact sizes. Add `-- --playtest` to the `test_editor_ui.gd` command to also launch and stop a real game window. Import the project once in the editor before running scripts on a fresh checkout so Godot registers the named resource classes.
+
+Run `--script tests/shape_preview.gd` without `--headless` to capture all six samples and the 120-cell during folding. When running tests in a restricted environment, add `--log-file C:/MyProjects/Fold/test-output/test.log` if Godot cannot write its default user log.
 
 To run a saved custom garden directly, append `-- --level=res://levels/custom/my_garden.tres`. For a persistent F5 override, assign a `FoldLevel` resource to the main scene's **Level Override** property in the Inspector. The campaign list is explicit in `scripts/level_data.gd`, so saving a draft never silently adds it to the campaign.

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="FoldLevel" format=3 uid="uid://4ufpumh0860d"]
+
+[ext_resource type="Script" uid="uid://cuovfw6cigeoa" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" uid="uid://6lxak7sowd5s" path="res://levels/box_definition.gd" id="2_box"]
+[ext_resource type="Script" uid="uid://bu8syshd4pj6v" path="res://levels/shape_definition.gd" id="3_shape"]
+
+[sub_resource type="Resource" id="Resource_b2xf3"]
+script = ExtResource("2_box")
+center = Vector4(0, -0.5, 0, 0)
+size = Vector4(16, 1, 14, 14)
+
+[sub_resource type="Resource" id="Resource_kym0o"]
+script = ExtResource("3_shape")
+kind = "600-cell"
+center = Vector4(0, 2, 0, 0)
+scale = 5.0
+edge_thickness = 0.5
+
+[resource]
+script = ExtResource("1_level")
+title = "Shape sample / 600-cell"
+subtitle = "Six hundred cells, open space within."
+lesson = "Explore the 120-cell's dual: a dense network of tetrahedral cells represented by their solid edges alone."
+hints = Array[String](["Walk toward the center echo through a gap between the solid edge beams.", "At X 0, press Q or E and move to W +1.5 to inspect another slice and collect its echo.", "Return to W 0 and cross the open frame to the amber gate at X +6."])
+start = Vector4(-6, 0, 0, 0)
+goal = Vector4(6, 0, 0, 0)
+goal_hint = "Visit the two echoes inside the frame and finish at W 0."
+boxes = Array[ExtResource("2_box")]([SubResource("Resource_b2xf3")])
+shapes = Array[ExtResource("3_shape")]([SubResource("Resource_kym0o")])
+seeds = Array[Vector4]([Vector4(0, 0.85, 0, 0), Vector4(0, 0.85, 0, 1.5)])

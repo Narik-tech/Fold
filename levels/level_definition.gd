@@ -7,6 +7,7 @@ extends Resource
 
 const BoxDefinition = preload("res://levels/box_definition.gd")
 const Geometry = preload("res://scripts/slice_geometry.gd")
+const EdgeGeometry = preload("res://scripts/edge_geometry.gd")
 const PLAYER_RADIUS: float = 0.27
 const PLAYER_HEIGHT: float = 1.25
 const SUPPORT_EPSILON: float = 0.05
@@ -22,6 +23,7 @@ const SUPPORT_EPSILON: float = 0.05
 @export var goal: Vector4 = Vector4(4.0, 0.0, 0.0, 0.0)
 @export var goal_hint: String = ""
 @export var boxes: Array[FoldBox] = []
+@export var shapes: Array[FoldShape] = []
 @export var seeds: Array[Vector4] = []
 
 @export_category("Optional solution")
@@ -29,13 +31,16 @@ const SUPPORT_EPSILON: float = 0.05
 ## Zero-based indices of segments that need a jump: 0 joins waypoints 0 and 1.
 @export var jump_segments: Array[int] = []
 
+var _validated_shape_data: Array[Dictionary] = []
+var _validated_shape_geometry: Array[Dictionary] = []
+
 
 func to_dictionary() -> Dictionary:
 	var runtime_boxes: Array[Dictionary] = []
 	for box in boxes:
 		if box != null:
 			runtime_boxes.append(box.to_dictionary())
-	return {
+	var snapshot: Dictionary = {
 		"title": title,
 		"subtitle": subtitle,
 		"lesson": lesson,
@@ -48,6 +53,14 @@ func to_dictionary() -> Dictionary:
 		"solution": solution.duplicate(),
 		"jump_segments": jump_segments.duplicate(),
 	}
+	# Preserve the original dictionary contract for existing box-only levels.
+	if not shapes.is_empty():
+		var runtime_shapes: Array[Dictionary] = []
+		for shape in shapes:
+			if shape != null:
+				runtime_shapes.append(shape.to_dictionary())
+		snapshot["shapes"] = runtime_shapes
+	return snapshot
 
 
 static func create_default() -> FoldLevel:
@@ -67,7 +80,7 @@ static func create_default() -> FoldLevel:
 
 
 ## Bypass the resource cache so re-opening a file sees the latest saved data
-## and each editor/play session owns its own box subresources. External box
+## and each editor/play session owns its own geometry subresources. External
 ## resources are refreshed individually, then made local to the loaded level.
 static func load_level(path: String) -> FoldLevel:
 	if not ResourceLoader.exists(path):
@@ -87,6 +100,15 @@ static func load_level(path: String) -> FoldLevel:
 			if box == null:
 				return null
 		level.boxes[index] = box.duplicate() as FoldBox
+	for index in range(level.shapes.size()):
+		var shape: FoldShape = level.shapes[index]
+		if shape == null:
+			continue
+		if not shape.resource_path.is_empty() and not shape.is_built_in():
+			shape = ResourceLoader.load(shape.resource_path, "", ResourceLoader.CACHE_MODE_IGNORE) as FoldShape
+			if shape == null:
+				return null
+		level.shapes[index] = shape.duplicate() as FoldShape
 	if not level.validation_errors().is_empty():
 		return null
 	return level
@@ -100,8 +122,8 @@ func validation_errors() -> PackedStringArray:
 		errors.append("Start must contain finite X, Y, Z, and W coordinates.")
 	if not goal.is_finite():
 		errors.append("Exit must contain finite X, Y, Z, and W coordinates.")
-	if boxes.is_empty():
-		errors.append("Add at least one solid box for the traveler to stand on.")
+	if boxes.is_empty() and shapes.is_empty():
+		errors.append("Add at least one solid box or shape for the traveler to stand on.")
 	for index in range(boxes.size()):
 		var box: FoldBox = boxes[index]
 		if box == null:
@@ -109,6 +131,13 @@ func validation_errors() -> PackedStringArray:
 			continue
 		for message in box.validation_errors():
 			errors.append("Box %d: %s" % [index + 1, message])
+	for index in range(shapes.size()):
+		var shape: FoldShape = shapes[index]
+		if shape == null:
+			errors.append("Shape %d is empty; assign a FoldShape resource or remove it." % (index + 1))
+			continue
+		for message in shape.validation_errors():
+			errors.append("Shape %d: %s" % [index + 1, message])
 	for index in range(seeds.size()):
 		if not seeds[index].is_finite():
 			errors.append("Echo %d must contain finite coordinates." % (index + 1))
@@ -130,8 +159,9 @@ func validation_warnings() -> PackedStringArray:
 	var warnings := PackedStringArray()
 	if not validation_errors().is_empty():
 		return warnings
-	_validate_position(start, "Start", warnings)
-	_validate_position(goal, "Exit", warnings)
+	var edge_shapes: Array[Dictionary] = _shape_geometry_for_validation()
+	_validate_position(start, "Start", warnings, edge_shapes)
+	_validate_position(goal, "Exit", warnings, edge_shapes)
 	if seeds.is_empty():
 		warnings.append("There are no echoes; the exit will be unlocked immediately.")
 	if solution.is_empty():
@@ -144,7 +174,18 @@ func validation_warnings() -> PackedStringArray:
 	return warnings
 
 
-func _validate_position(position: Vector4, label: String, warnings: PackedStringArray) -> void:
+func _shape_geometry_for_validation() -> Array[Dictionary]:
+	var data: Array[Dictionary] = []
+	for shape in shapes:
+		data.append(shape.to_dictionary())
+	if data != _validated_shape_data:
+		_validated_shape_data = data
+		_validated_shape_geometry = EdgeGeometry.compile_shapes(data)
+	return _validated_shape_geometry
+
+
+func _validate_position(position: Vector4, label: String, warnings: PackedStringArray,
+		edge_shapes: Array[Dictionary]) -> void:
 	var supported: bool = false
 	var blocked: bool = false
 	for box in boxes:
@@ -158,9 +199,23 @@ func _validate_position(position: Vector4, label: String, warnings: PackedString
 			supported = true
 		if Geometry.intersects_player(position, box.center, box.size, PLAYER_RADIUS, PLAYER_HEIGHT):
 			blocked = true
+	var blocked_by_edge: bool = false
+	for shape: Dictionary in edge_shapes:
+		if not EdgeGeometry.bounds_overlap(shape, position, PLAYER_RADIUS, PLAYER_HEIGHT, SUPPORT_EPSILON):
+			continue
+		for edge: Dictionary in shape.edges:
+			if not EdgeGeometry.bounds_overlap(edge, position, PLAYER_RADIUS, PLAYER_HEIGHT, SUPPORT_EPSILON):
+				continue
+			var interval: Vector2 = EdgeGeometry.movement_interval(edge, position, 1, PLAYER_RADIUS, PLAYER_HEIGHT)
+			if interval.x <= interval.y and absf(position.y - interval.y) <= SUPPORT_EPSILON:
+				supported = true
+			if EdgeGeometry.intersects_player(position, edge, PLAYER_RADIUS, PLAYER_HEIGHT):
+				blocked_by_edge = true
 	if not supported:
-		warnings.append("%s is not on a platform top. Place its feet at the top Y of a supporting box." % label)
+		warnings.append("%s is not on a platform top. Place its feet on a supporting box or shape edge." % label)
 	if blocked:
 		warnings.append("%s overlaps a solid box. Leave room for the traveler's height and width." % label)
+	if blocked_by_edge:
+		warnings.append("%s overlaps a solid shape edge. Leave room for the traveler's height and width." % label)
 	if position.y < -7.0:
 		warnings.append("%s is below the fall boundary (Y -7); the traveler will respawn there." % label)

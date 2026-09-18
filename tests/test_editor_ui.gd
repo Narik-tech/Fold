@@ -24,6 +24,7 @@ func _run() -> void:
 	_expect(panel.document.level.solution.is_empty() and panel.document.level.jump_segments.is_empty(), "Geometry edits invalidate the old solution proof")
 	panel._undo()
 	_expect(is_equal_approx(panel.document.level.boxes[2].center.w, 2.65) and not panel.document.level.solution.is_empty(), "Undo restores geometry and recorded solution")
+	_test_frames(panel)
 	panel._new_level()
 	panel.document.save_level(TEST_PATH)
 	panel.document.set_metadata(&"title", "Saved edit")
@@ -44,6 +45,31 @@ func _run() -> void:
 	DirAccess.remove_absolute(TEST_PATH)
 	print("%s: %d editor UI checks." % ["PASS" if failures == 0 else "FAIL", checks])
 	quit(0 if failures == 0 else 1)
+
+func _test_frames(panel: Control) -> void:
+	_expect(panel._shape_kind.item_count == 6 and panel._samples_menu.get_popup().item_count == 6, "All six regular 4D shapes and sample gardens are discoverable")
+	panel._shape_kind.select(EditorPanel.Polytopes.TYPES.find("120-cell"))
+	panel._add_selected_shape()
+	var frame: int = panel.selection
+	_expect(panel.document.is_shape(frame) and panel.document.shape_at(frame).kind == "120-cell", "Add Shape creates and selects the chosen kind")
+	_expect(panel._shape_group.visible and not panel._size_group.visible, "Frame inspector exposes uniform scale instead of box dimensions")
+	panel._shape_scale.value = 7.25
+	panel._edge_thickness.value = 0.125
+	panel._position_fields[1].value = 2.75
+	_expect(is_equal_approx(panel.document.shape_at(frame).scale, 7.25) and is_equal_approx(panel.document.shape_at(frame).edge_thickness, 0.125) and is_equal_approx(panel.document.shape_at(frame).center.y, 2.75), "Frame inspector writes scale, edge thickness, and center coordinates")
+	panel._undo()
+	_expect(not is_equal_approx(panel.document.shape_at(frame).center.y, 2.75), "Undo restores frame inspector edits")
+	panel._redo()
+	_expect(is_equal_approx(panel._position_fields[1].value, 2.75), "Redo refreshes the frame inspector")
+	var previous: Dictionary = panel.document.level.to_dictionary()
+	panel._open_sample(0)
+	_expect(panel._discard_dialog.visible and panel.document.level.to_dictionary() == previous, "Opening a sample protects unsaved geometry")
+	panel._discard_dialog.hide()
+	panel._discard_dialog.canceled.emit()
+	for index in EditorPanel.Polytopes.TYPES.size():
+		panel._load_sample(index)
+		var kind: String = EditorPanel.Polytopes.TYPES[index]
+		_expect(panel.document.is_shape(panel.selection) and panel.document.shape_at(panel.selection).kind == kind and not panel.document.is_dirty(), "%s sample opens with its whole frame selected" % kind)
 
 func _test_playtest(panel: Control) -> void:
 	# Optional desktop integration: actually opens and closes a game window.

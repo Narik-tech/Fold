@@ -15,12 +15,17 @@ func _run() -> void:
 	panel._open_level("res://levels/02_the_missing_span.tres")
 	panel._select_object(4)
 	await _capture(panel, "level-editor-xz")
-	var projection: OptionButton = panel.find_children("*", "OptionButton", true, false)[0]
+	var projection: OptionButton = panel.find_child("Projection", true, false)
 	projection.select(1)
 	projection.item_selected.emit(1)
 	await _capture(panel, "level-editor-xw")
 	root.size = Vector2i(900, 680)
 	await _capture(panel, "level-editor-compact")
+	root.size = Vector2i(1280, 800)
+	panel._load_sample(4)
+	await _capture(panel, "level-editor-120-cell")
+	root.size = Vector2i(900, 680)
+	await _capture(panel, "level-editor-120-cell-compact")
 	panel.queue_free()
 	await process_frame
 	print("PASS: level editor panel rendered at desktop and compact sizes.")

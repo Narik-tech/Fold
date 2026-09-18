@@ -1,12 +1,15 @@
 @tool
 extends RefCounted
 ## Editable copy and local history. No dependency on the editor UI or game tree.
-## Selection IDs: start=0, goal=1, then boxes, then echoes.
+## Selection IDs: start=0, goal=1, then boxes, shapes, and echoes.
 
 signal changed
 
 const Level = preload("res://levels/level_definition.gd")
 const Box = preload("res://levels/box_definition.gd")
+const Shape = preload("res://levels/shape_definition.gd")
+const Polytopes = preload("res://scripts/polytope_geometry.gd")
+const SHAPE_LABELS := {"5-cell": "5-cell", "tesseract": "Tesseract", "16-cell": "16-cell", "24-cell": "24-cell", "120-cell": "120-cell", "600-cell": "600-cell"}
 const HISTORY_LIMIT := 100
 
 var level: FoldLevel
@@ -32,6 +35,9 @@ func set_level(source: FoldLevel, source_path: String = "", dirty: bool = false)
 	for index in level.boxes.size():
 		if level.boxes[index] != null:
 			level.boxes[index] = level.boxes[index].duplicate_deep(Resource.DEEP_DUPLICATE_ALL) as FoldBox
+	for index in level.shapes.size():
+		if level.shapes[index] != null:
+			level.shapes[index] = level.shapes[index].duplicate_deep(Resource.DEEP_DUPLICATE_ALL) as FoldShape
 	path = source_path
 	_saved_state = {} if dirty else level.to_dictionary().duplicate(true)
 	_undo.clear()
@@ -122,11 +128,23 @@ func set_metadata(property: StringName, value: Variant) -> void:
 
 
 func object_count() -> int:
-	return 2 + level.boxes.size() + level.seeds.size()
+	return 2 + level.boxes.size() + level.shapes.size() + level.seeds.size()
 
 
 func is_box(index: int) -> bool:
 	return index >= 2 and index < 2 + level.boxes.size()
+
+
+func is_shape(index: int) -> bool:
+	return index >= 2 + level.boxes.size() and index < 2 + level.boxes.size() + level.shapes.size()
+
+
+func shape_at(index: int) -> FoldShape:
+	return level.shapes[index - 2 - level.boxes.size()] if is_shape(index) else null
+
+
+func _echo_index(index: int) -> int:
+	return index - 2 - level.boxes.size() - level.shapes.size()
 
 
 func object_name(index: int) -> String:
@@ -137,7 +155,9 @@ func object_name(index: int) -> String:
 	if is_box(index):
 		var kind: String = level.boxes[index - 2].kind
 		return "%s %d" % ["Floor" if kind == "stone" else kind.capitalize(), index - 1]
-	return "Echo %d" % (index - level.boxes.size() - 1)
+	if is_shape(index):
+		return "%s %d" % [SHAPE_LABELS.get(shape_at(index).kind, "4D shape"), index - 1 - level.boxes.size()]
+	return "Echo %d" % (_echo_index(index) + 1)
 
 
 func object_position(index: int) -> Vector4:
@@ -147,10 +167,15 @@ func object_position(index: int) -> Vector4:
 		return level.goal
 	if is_box(index):
 		return level.boxes[index - 2].center
-	return level.seeds[index - 2 - level.boxes.size()]
+	if is_shape(index):
+		return shape_at(index).center
+	return level.seeds[_echo_index(index)]
 
 
 func object_size(index: int) -> Vector4:
+	if is_shape(index):
+		var shape := shape_at(index)
+		return Vector4.ONE * (shape.scale * 2.0 + shape.edge_thickness)
 	return level.boxes[index - 2].size if is_box(index) else Vector4.ONE * 0.5
 
 
@@ -165,8 +190,10 @@ func set_position(index: int, position: Vector4, merge: bool = false) -> void:
 		level.goal = position
 	elif is_box(index):
 		level.boxes[index - 2].center = position
+	elif is_shape(index):
+		shape_at(index).center = position
 	else:
-		level.seeds[index - 2 - level.boxes.size()] = position
+		level.seeds[_echo_index(index)] = position
 	changed.emit()
 
 
@@ -177,6 +204,38 @@ func set_size(index: int, dimensions: Vector4) -> void:
 	_invalidate_solution()
 	level.boxes[index - 2].size = dimensions
 	changed.emit()
+
+
+func set_shape_scale(index: int, value: float) -> void:
+	if not is_shape(index) or shape_at(index).scale == value:
+		return
+	_remember("shape_scale:%d" % index)
+	_invalidate_solution()
+	shape_at(index).scale = value
+	changed.emit()
+
+
+func set_edge_thickness(index: int, value: float) -> void:
+	if not is_shape(index) or shape_at(index).edge_thickness == value:
+		return
+	_remember("edge_thickness:%d" % index)
+	_invalidate_solution()
+	shape_at(index).edge_thickness = value
+	changed.emit()
+
+
+func add_shape(kind: String) -> int:
+	if kind not in Polytopes.TYPES:
+		return -1
+	_remember()
+	_invalidate_solution()
+	var shape := Shape.new()
+	shape.kind = kind
+	# The frame straddles the floor so the player can explore its open interior.
+	shape.center = Vector4(0.0, shape.scale * 0.35, 0.0, 0.0)
+	level.shapes.append(shape)
+	changed.emit()
+	return 1 + level.boxes.size() + level.shapes.size()
 
 
 func add_object(kind: String) -> int:
@@ -215,8 +274,10 @@ func delete_object(index: int) -> void:
 	_remember()
 	if is_box(index):
 		level.boxes.remove_at(index - 2)
+	elif is_shape(index):
+		level.shapes.remove_at(index - 2 - level.boxes.size())
 	else:
-		level.seeds.remove_at(index - 2 - level.boxes.size())
+		level.seeds.remove_at(_echo_index(index))
 	_invalidate_solution()
 	changed.emit()
 
@@ -233,6 +294,11 @@ func duplicate_object(index: int) -> int:
 		box.center += offset
 		level.boxes.append(box)
 		selected = 1 + level.boxes.size()
+	elif is_shape(index):
+		var shape: FoldShape = shape_at(index).duplicate_deep(Resource.DEEP_DUPLICATE_ALL)
+		shape.center += offset
+		level.shapes.append(shape)
+		selected = 1 + level.boxes.size() + level.shapes.size()
 	else:
 		level.seeds.append(object_position(index) + offset)
 		selected = object_count() - 1

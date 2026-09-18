@@ -1,9 +1,10 @@
 extends Node3D
-## FOLD: a 3D cross-section through an axis-aligned four-dimensional world.
+## FOLD: a 3D cross-section through a world of four-dimensional boxes and beams.
 ## Owns session state and four-dimensional simulation.
 ## Child scenes provide rendering, interface, and audio through explicit APIs.
 
 const Geometry = preload("res://scripts/slice_geometry.gd")
+const Edges = preload("res://scripts/edge_geometry.gd")
 const Levels = preload("res://scripts/level_data.gd")
 const SPEED: float = 4.2
 const GRAVITY: float = 18.0
@@ -21,6 +22,7 @@ const HEIGHT: float = 1.25
 var levels: Array[Dictionary] = []
 var level_index: int = 0
 var level: Dictionary = {}
+var shape_solids: Array[Dictionary] = []
 var position4: Vector4 = Vector4.ZERO
 var vertical_speed: float = 0.0
 var grounded: bool = false
@@ -180,6 +182,7 @@ func _move_axis(axis: int, amount: float) -> void:
 	var count := maxi(1, ceili(absf(amount) / 0.08))
 	var step := amount / float(count)
 	for unused in range(count):
+		var previous := position4[axis]
 		position4[axis] += step
 		for box: Dictionary in level.get("boxes", []):
 			var center: Vector4 = box.center
@@ -197,6 +200,23 @@ func _move_axis(axis: int, amount: float) -> void:
 				vertical_speed = 0.0
 			else:
 				position4[axis] = lo - RADIUS if step > 0.0 else hi + RADIUS
+		for shape: Dictionary in shape_solids:
+			if not Edges.bounds_overlap(shape, position4, RADIUS, HEIGHT, absf(step)):
+				continue
+			for edge: Dictionary in shape.edges:
+				if not Edges.bounds_overlap(edge, position4, RADIUS, HEIGHT, absf(step)):
+					continue
+				var interval := Edges.movement_interval(edge, position4, axis, RADIUS, HEIGHT)
+				var hit := false
+				if step > 0.0 and previous <= interval.x + Edges.EPS and position4[axis] > interval.x:
+					position4[axis] = interval.x
+					hit = true
+				elif step < 0.0 and previous >= interval.y - Edges.EPS and position4[axis] < interval.y:
+					position4[axis] = interval.y
+					hit = true
+				if hit and axis == 1:
+					grounded = step < 0.0
+					vertical_speed = 0.0
 
 func request_fold() -> bool:
 	if rotating or paused or completed or not started:
@@ -292,6 +312,7 @@ func _hint() -> void:
 func _load_level(index: int) -> void:
 	level_index = index
 	level = levels[index]
+	shape_solids = Edges.compile_shapes(level.get("shapes", []))
 	collected.clear()
 	for seed: Vector4 in level.seeds:
 		collected.append(false)

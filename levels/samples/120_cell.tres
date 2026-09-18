@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="FoldLevel" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" path="res://levels/box_definition.gd" id="2_box"]
+[ext_resource type="Script" path="res://levels/shape_definition.gd" id="3_shape"]
+
+[sub_resource type="Resource" id="Floor"]
+script = ExtResource("2_box")
+center = Vector4(0, -0.5, 0, 0)
+size = Vector4(16, 1, 14, 14)
+kind = "stone"
+
+[sub_resource type="Resource" id="Shape"]
+script = ExtResource("3_shape")
+kind = "120-cell"
+center = Vector4(0, 2, 0, 0)
+scale = 5.0
+edge_thickness = 0.12
+
+[resource]
+script = ExtResource("1_level")
+title = "Shape sample / 120-cell"
+subtitle = "One hundred twenty open dodecahedra."
+lesson = "Explore the 120-cell's fine edge network. Its many cells have no solid faces, so the interior remains walkable."
+hints = Array[String](["Walk through the gaps in the frame toward the center echo.", "Fold with Q or E at X 0, then walk to W +1.5. Watch the fine edges change as your slice moves.", "Return to W 0 and walk through the frame's far side to the gate at X +6."])
+start = Vector4(-6, 0, 0.65, 0)
+goal = Vector4(6, 0, 0.65, 0)
+goal_hint = "Explore the open center and W +1.5; finish at the W 0 gate."
+boxes = Array[ExtResource("2_box")]([SubResource("Floor")])
+shapes = Array[ExtResource("3_shape")]([SubResource("Shape")])
+seeds = Array[Vector4]([Vector4(0, 0.85, 0.65, 0), Vector4(0, 0.85, 0.65, 1.5)])
+solution = Array[Vector4]([Vector4(-6, 0, 0.65, 0), Vector4(0, 0, 0.65, 0), Vector4(0, 0, 0.65, 1.5), Vector4(0, 0, 0.65, 0), Vector4(6, 0, 0.65, 0)])
+jump_segments = Array[int]([])
