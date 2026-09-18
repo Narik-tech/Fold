@@ -193,7 +193,10 @@ func set_position(index: int, position: Vector4, merge: bool = false) -> void:
 	elif is_shape(index):
 		shape_at(index).center = position
 	else:
-		level.seeds[_echo_index(index)] = position
+		var echo_index := _echo_index(index)
+		if echo_index < level.echo_checkpoints.size():
+			level.echo_checkpoints[echo_index] += position - level.seeds[echo_index]
+		level.seeds[echo_index] = position
 	changed.emit()
 
 
@@ -243,7 +246,12 @@ func add_object(kind: String) -> int:
 	_invalidate_solution()
 	var selected: int
 	if kind == "echo":
-		level.seeds.append(Vector4(0.0, 0.85, 0.0, 0.0))
+		var position := Vector4(0.0, 0.85, 0.0, 0.0)
+		level.seeds.append(position)
+		if not level.echo_names.is_empty():
+			level.echo_names.append("Echo %d" % level.seeds.size())
+		if not level.echo_checkpoints.is_empty():
+			level.echo_checkpoints.append(position - Vector4(0.0, 0.85, 0.0, 0.0))
 		selected = object_count() - 1
 	else:
 		var box := Box.new()
@@ -277,7 +285,12 @@ func delete_object(index: int) -> void:
 	elif is_shape(index):
 		level.shapes.remove_at(index - 2 - level.boxes.size())
 	else:
-		level.seeds.remove_at(_echo_index(index))
+		var echo_index := _echo_index(index)
+		level.seeds.remove_at(echo_index)
+		if echo_index < level.echo_names.size():
+			level.echo_names.remove_at(echo_index)
+		if echo_index < level.echo_checkpoints.size():
+			level.echo_checkpoints.remove_at(echo_index)
 	_invalidate_solution()
 	changed.emit()
 
@@ -300,7 +313,12 @@ func duplicate_object(index: int) -> int:
 		level.shapes.append(shape)
 		selected = 1 + level.boxes.size() + level.shapes.size()
 	else:
+		var echo_index := _echo_index(index)
 		level.seeds.append(object_position(index) + offset)
+		if echo_index < level.echo_names.size():
+			level.echo_names.append("%s (copy)" % level.echo_names[echo_index])
+		if echo_index < level.echo_checkpoints.size():
+			level.echo_checkpoints.append(level.echo_checkpoints[echo_index] + offset)
 		selected = object_count() - 1
 	changed.emit()
 	return selected

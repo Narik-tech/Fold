@@ -50,6 +50,8 @@ var _slice_label: Label
 var _coordinate_label: Label
 var _orientation: OrientationView
 var _title_overlay: Control
+var _campaign_label: Label
+var _labyrinth_button: Button
 var _pause_overlay: Control
 var _completion_overlay: Control
 var _completion_title: Label
@@ -335,15 +337,21 @@ func _build_title() -> void:
 	_gap(box, 15)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
 	box.add_child(row)
 	var start := _button("Enter the garden   →", true)
 	start.custom_minimum_size = Vector2(245, 51)
 	start.pressed.connect(func() -> void: start_requested.emit())
 	row.add_child(start)
+	_labyrinth_button = _button("Explore the labyrinth   →")
+	_labyrinth_button.custom_minimum_size = Vector2(245, 51)
+	_labyrinth_button.pressed.connect(func() -> void: level_requested.emit(3))
+	row.add_child(_labyrinth_button)
+	_labyrinth_button.hide()
 	_gap(box, 13)
 	_center_label(box, "MOUSE  look     ·     W A S D  move with camera     ·     SPACE  jump", 11, MUTED)
 	_center_label(box, "Hold Q − / E + to fold     ·     ESC  pause / free cursor", 11, MUTED)
-	_center_label(box, "THREE SMALL GARDENS  /  ONE EXTRA DIMENSION", 9, Color(0.55, 0.68, 0.62, 0.8))
+	_campaign_label = _center_label(box, "GARDENS TO EXPLORE  /  ONE EXTRA DIMENSION", 9, Color(0.55, 0.68, 0.62, 0.8))
 	var footnote := _label("An original spatial puzzle", 10, MUTED)
 	_title_overlay.add_child(footnote)
 	footnote.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -417,6 +425,7 @@ func _update_navigation_visibility() -> void:
 	var show_chapters := not _custom_level and _level_buttons.size() > 1
 	_level_nav.visible = show_chapters
 	_pause_chapters.visible = show_chapters
+	_labyrinth_button.visible = not _custom_level and _level_buttons.size() >= 4
 
 func _setup_navigation(total: int) -> void:
 	if _level_buttons.size() != total:
@@ -443,6 +452,8 @@ func _setup_navigation(total: int) -> void:
 func setup_level(index: int, total: int, title: String, subtitle: String, lesson: String, seed_count: int) -> void:
 	_build()
 	_setup_navigation(total)
+	if not _custom_level:
+		_campaign_label.text = "%d GARDENS TO EXPLORE  /  ONE EXTRA DIMENSION" % total
 	_chapter_label.text = "F O L D     /     CUSTOM GARDEN" if _custom_level else "F O L D     /     CHAPTER %02d OF %02d" % [index + 1, total]
 	_title_label.text = title
 	_subtitle_label.text = subtitle

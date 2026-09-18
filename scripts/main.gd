@@ -25,6 +25,7 @@ var level_index: int = 0
 var level: Dictionary = {}
 var shape_solids: Array[Dictionary] = []
 var position4: Vector4 = Vector4.ZERO
+var respawn_position: Vector4 = Vector4.ZERO
 var vertical_speed: float = 0.0
 var grounded: bool = false
 var coyote: float = 0.0
@@ -76,6 +77,8 @@ func _ready() -> void:
 			_select_level(1)
 		if "--level3" in args:
 			_select_level(2)
+		if "--level4" in args:
+			_select_level(3)
 		if "--folded" in args:
 			active_axis = 1
 			angle = PI / 2.0
@@ -290,7 +293,21 @@ func _check_objectives() -> void:
 		if not collected[i] and body_center.distance_to(level.seeds[i]) < 0.88:
 			collected[i] = true
 			sound.play_seed(_collected_count() - 1)
-			hud.show_toast("All echoes found. Return to the amber gate." if _collected_count() == collected.size() else "An echo found in the quiet dimension.")
+			var checkpoints: Array = level.get("echo_checkpoints", [])
+			if i < checkpoints.size():
+				respawn_position = checkpoints[i]
+			var names: Array = level.get("echo_names", [])
+			if i < names.size():
+				# A later echo can be found first; keep the earliest missing guidance.
+				hint_index = _first_uncollected_echo()
+				var message := "%s found · %d/%d echoes." % [names[i], _collected_count(), collected.size()]
+				if i < checkpoints.size():
+					message += " Checkpoint saved."
+				if not collected.has(false):
+					message += " The amber gate is open."
+				hud.show_toast(message)
+			else:
+				hud.show_toast("All echoes found. Return to the amber gate." if _collected_count() == collected.size() else "An echo found in the quiet dimension.")
 	if _collected_count() == collected.size() and position4.distance_to(level.goal) < 0.95:
 		completed = true
 		_sync_mouse_mode()
@@ -335,7 +352,7 @@ func _restart() -> void:
 	sound.play_reset()
 
 func _respawn() -> void:
-	position4 = level.start
+	position4 = respawn_position
 	vertical_speed = 0.0
 	grounded = true
 	active_axis = 0
@@ -344,7 +361,7 @@ func _respawn() -> void:
 	jump_buffer = 0.0
 	last_motion = Vector2.ZERO
 	_reset_camera()
-	hud.show_toast("Back on solid ground. Your echoes are safe.")
+	hud.show_toast("Back at your checkpoint. Your echoes are safe." if respawn_position != level.start else "Back on solid ground. Your echoes are safe.")
 	sound.play_reset()
 
 func _next_level() -> void:
@@ -379,10 +396,27 @@ func _exit_tree() -> void:
 
 func _hint() -> void:
 	var hints: Array = level.get("hints", [])
+	if not level.get("echo_names", []).is_empty():
+		if not collected.has(false):
+			hud.show_hint(level.goal_hint)
+		elif hint_index >= hints.size():
+			hud.show_hint(level.goal_hint)
+			hint_index = _first_uncollected_echo()
+		else:
+			hud.show_hint(hints[hint_index])
+			hint_index += 1
+		return
 	if hints.is_empty():
 		return
 	hud.show_hint(hints[mini(hint_index, hints.size() - 1)])
 	hint_index += 1
+
+
+func _first_uncollected_echo() -> int:
+	for index in range(collected.size()):
+		if not collected[index]:
+			return index
+	return collected.size()
 
 func _load_level(index: int) -> void:
 	level_index = index
@@ -393,6 +427,7 @@ func _load_level(index: int) -> void:
 		collected.append(false)
 	world.load_level(level, index)
 	position4 = level.start
+	respawn_position = level.start
 	vertical_speed = 0.0
 	grounded = true
 	active_axis = 0
@@ -413,7 +448,21 @@ func _load_level(index: int) -> void:
 func _reset_camera() -> void:
 	world.update_slice(position4, angle, active_axis, rotating, collected, clock, RADIUS)
 	var toward_goal: Vector4 = level.goal - position4
-	world.reset_camera(position4, angle, Vector2(toward_goal.x, toward_goal.z * cos(angle) + toward_goal.w * sin(angle)))
+	var facing := Vector2(toward_goal.x, toward_goal.z * cos(angle) + toward_goal.w * sin(angle))
+	if facing.is_zero_approx():
+		# A gate directly above or outside this slice gives no useful heading.
+		# At an authored waypoint, face the next visible leg of its route.
+		var route: Array = level.get("solution", [])
+		var found_position := false
+		for waypoint: Vector4 in route:
+			if not found_position:
+				found_position = waypoint.is_equal_approx(position4)
+				continue
+			var toward_waypoint := waypoint - position4
+			facing = Vector2(toward_waypoint.x, toward_waypoint.z * cos(angle) + toward_waypoint.w * sin(angle))
+			if not facing.is_zero_approx():
+				break
+	world.reset_camera(position4, angle, facing)
 
 
 func _capture() -> void:

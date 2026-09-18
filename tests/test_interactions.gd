@@ -26,6 +26,7 @@ func _run() -> void:
 	_test_rotation_timing_and_movement()
 	_test_restart_and_respawn()
 	_test_completion()
+	_test_campaign_navigation()
 	# Synchronous input checks finish before the next real audio mix tick.
 	game.sound.stop_all()
 	await create_timer(0.08).timeout
@@ -203,6 +204,41 @@ func _test_completion() -> void:
 	_expect(game.level_index == 1 and not game.completed and not game.hud._completion_overlay.visible, "Enter advances from completion to the next garden")
 	_echo(KEY_ENTER)
 	_expect(game.level_index == 1, "Repeating Enter does not skip the newly opened garden")
+
+
+func _test_campaign_navigation() -> void:
+	var total: int = game.levels.size()
+	_expect(total == 4, "The maze is available as the fourth campaign garden")
+	_expect(game.hud._level_buttons.size() == total and game.hud._pause_level_buttons.size() == total, "Both chapter menus show every campaign level")
+	_expect(game.hud._campaign_label.text.begins_with("%d GARDENS" % total), "The title reflects the campaign's actual garden count")
+	_tap(KEY_ESCAPE)
+	_expect(game.hud._pause_chapters.visible, "Pause exposes chapter selection while the cursor is free")
+	game.hud._pause_level_buttons[total - 1].pressed.emit()
+	_expect(game.level_index == total - 1 and not game.paused, "The last pause-menu chapter button opens the labyrinth and resumes play")
+	_expect(game.level.title == "04  /  The fourfold labyrinth" and game.hud._seed_label.text == "0 / 5", "The labyrinth starts with its five-echo objective")
+	game.position4 = game.level.goal
+	game._check_objectives()
+	_expect(not game.completed, "The labyrinth exit waits for all five echoes")
+	game.collected.fill(true)
+	game._check_objectives()
+	_expect(game.completed and game.hud._final_level, "The fourth garden receives campaign completion")
+	_tap(KEY_ENTER)
+	_expect(game.level_index == 0 and not game.completed, "Finishing the labyrinth returns to the first garden")
+	_tap(KEY_ESCAPE)
+	game.hud._pause_level_buttons[total - 2].pressed.emit()
+	game.collected.fill(true)
+	game.position4 = game.level.goal
+	game._check_objectives()
+	_expect(game.completed and not game.hud._final_level, "The third garden now leads onward instead of ending the campaign")
+	_tap(KEY_ENTER)
+	_expect(game.level_index == total - 1 and not game.completed, "The third garden advances directly to the labyrinth")
+	game._select_level(0)
+	game.started = false
+	game._sync_mouse_mode()
+	game.hud.show_title()
+	_expect(game.hud._labyrinth_button.visible, "The title offers a direct labyrinth shortcut")
+	game.hud._labyrinth_button.pressed.emit()
+	_expect(game.level_index == 3 and game.started and not game.hud._title_overlay.visible, "The title shortcut starts the labyrinth immediately")
 
 
 func _tap(key: Key) -> void:

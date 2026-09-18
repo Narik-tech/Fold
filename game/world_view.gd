@@ -12,6 +12,8 @@ const CAMERA_FOLLOW_SPEED := 9.0
 const CAMERA_PADDING := 0.18
 const CAMERA_MIN_PITCH := deg_to_rad(-15.0)
 const CAMERA_MAX_PITCH := deg_to_rad(70.0)
+const WAYMARK_MAX_TEXT_PIXELS := 22.0
+const WAYMARK_READING_DISTANCE := 4.5
 
 ## Radians per screen pixel; independent of the viewport's stretch scale.
 @export_range(0.0005, 0.01, 0.0001) var mouse_sensitivity := 0.003
@@ -24,6 +26,9 @@ var shape_fringes: Array[MeshInstance3D] = []
 var shape_solids: Array[Dictionary] = []
 var _shape_slice_key := Vector4(INF, INF, INF, INF)
 var seed_visuals: Array[Node3D] = []
+var echo_rings: Array[MeshInstance3D] = []
+var waymark_visuals: Array[Node3D] = []
+var waymark_labels: Array[Label3D] = []
 var camera: Camera3D
 var _camera_boxes: Array[AABB] = []
 var _camera_shapes: Array[TriangleMesh] = []
@@ -64,6 +69,9 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 	shape_solids = Edges.compile_shapes(_level.get("shapes", []))
 	_shape_slice_key = Vector4(INF, INF, INF, INF)
 	seed_visuals.clear()
+	echo_rings.clear()
+	waymark_visuals.clear()
+	waymark_labels.clear()
 	decorations.clear()
 	for box: Dictionary in _level.boxes:
 		var mesh := MeshInstance3D.new()
@@ -94,8 +102,15 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 		beam.position.y = -0.52
 		root.add_child(beam)
 		seed_visuals.append(root)
+		if not _level.get("echo_names", []).is_empty():
+			var memory_ring := _ring(0.31, 0.018, materials.gold_dim)
+			memory_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			memory_ring.visible = false
+			level_root.add_child(memory_ring)
+			echo_rings.append(memory_ring)
 	_build_goal()
 	_build_decorations(decoration_seed)
+	_build_waymarks()
 
 
 func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating: bool,
@@ -136,6 +151,24 @@ func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating:
 			visual.position = _project(pos, angle) + Vector3(0, sin(clock * 2.1 + float(i)) * 0.11, 0)
 			visual.rotation.y = clock * 0.65
 			visual.scale = Vector3.ONE * sqrt(maxf(0.0, 1.0 - pow(hidden / 0.95, 2)))
+		if i < echo_rings.size():
+			var ring := echo_rings[i]
+			ring.visible = collected[i] and absf(hidden) < 0.95
+			if ring.visible:
+				var feet: Vector4 = pos - Vector4(0, 0.83, 0, 0)
+				var checkpoints: Array = _level.get("echo_checkpoints", [])
+				if i < checkpoints.size():
+					feet.y = checkpoints[i].y + 0.02
+				ring.position = _project(feet, angle)
+				ring.scale = Vector3.ONE * sqrt(maxf(0.0, 1.0 - pow(hidden / 0.95, 2)))
+	for index in range(waymark_visuals.size()):
+		var pos: Vector4 = _level.waymark_positions[index]
+		var hidden := _hidden_distance(pos, position4, angle)
+		var visual := waymark_visuals[index]
+		visual.visible = absf(hidden) < 0.95
+		if visual.visible:
+			visual.position = _project(pos, angle)
+			visual.scale = Vector3.ONE * sqrt(maxf(0.0, 1.0 - pow(hidden / 0.95, 2)))
 	for deco: Dictionary in decorations:
 		var node: Node3D = deco.node
 		var hidden := _hidden_distance(deco.position, position4, angle)
@@ -145,6 +178,14 @@ func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating:
 			node.scale = Vector3.ONE * clampf(1.0 - pow(absf(hidden) / float(deco.radius), 3), 0.01, 1.0)
 	goal_root.visible = absf(_hidden_distance(_level.goal, position4, angle)) < 0.95
 	goal_root.position = _project(_level.goal, angle)
+	# Present a named-echo garden's gate across its final approach, so the
+	# reward reads as an open doorway when arriving along the sky walk.
+	var route: Array = _level.get("solution", [])
+	if not _level.get("echo_names", []).is_empty() and route.size() > 1:
+		var approach: Vector4 = _level.goal - route[-2]
+		var facing := Vector2(approach.x, approach.z * cos(angle) + approach.w * sin(angle))
+		if not facing.is_zero_approx():
+			goal_root.rotation.y = atan2(facing.x, facing.y)
 	portal_inner.visible = not collected.has(false)
 	if portal_inner.visible:
 		portal_inner.scale.x = 0.92 + sin(clock * 2.5) * 0.08
@@ -225,6 +266,29 @@ func update_camera(delta: float) -> void:
 	camera.position = focus + direction * _camera_arm_length
 	camera.look_at(focus)
 	_camera_ready = true
+	_update_waymark_labels()
+
+
+func _update_waymark_labels() -> void:
+	# Tight corridors shorten the camera arm. Cap nearby lettering in screen
+	# pixels so signs stay readable without filling the view; distant signs
+	# retain their natural perspective falloff and slice-boundary fade.
+	var focal_pixels := get_viewport().get_visible_rect().size.y / (2.0 * tan(deg_to_rad(camera.fov) * 0.5))
+	var nearest: Label3D
+	var nearest_distance := WAYMARK_READING_DISTANCE
+	for label in waymark_labels:
+		var depth := maxf(0.01, -camera.to_local(label.global_position).z)
+		var projected_height := float(label.font_size) * label.pixel_size * focal_pixels / depth
+		label.scale = Vector3.ONE * minf(1.0, WAYMARK_MAX_TEXT_PIXELS / projected_height)
+		var marker := label.get_parent() as Node3D
+		var distance := marker.global_position.distance_to(hero.global_position)
+		if marker.is_visible_in_tree() and depth > 0.01 and distance < nearest_distance:
+			nearest = label
+			nearest_distance = distance
+	# Read the nearest court on approach, keeping distant aligned signs from
+	# overlapping it. Their rings still reveal the other courts in this slice.
+	for label in waymark_labels:
+		label.visible = label == nearest
 
 
 func _clip_camera(focus: Vector3, proposed: Vector3) -> Vector3:
@@ -313,6 +377,7 @@ func _setup_materials() -> void:
 	fringe.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	materials["fringe"] = fringe
 	materials["edge"] = _material(Color("89d0ca"), 0.12)
+	materials["waymark"] = _material(Color("89c4b8"), 0.25)
 
 func _material(color: Color, emission: float = 0.0) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
@@ -502,6 +567,30 @@ func _build_decorations(decoration_seed: int) -> void:
 			leaf.scale.y = 0.58
 			tree.add_child(leaf)
 		decorations.append({"node": tree, "position": tree_pos, "radius": 0.8})
+
+func _build_waymarks() -> void:
+	var labels: Array = _level.get("waymark_labels", [])
+	for index in range(labels.size()):
+		var marker := Node3D.new()
+		level_root.add_child(marker)
+		var ring := _ring(0.46, 0.016, materials.waymark)
+		ring.position.y = 0.025
+		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		marker.add_child(ring)
+		var label := Label3D.new()
+		label.text = labels[index]
+		label.position.y = 2.0
+		label.font_size = 42
+		label.pixel_size = 0.004
+		label.outline_size = 8
+		label.modulate = Color("d8e9d7")
+		label.outline_modulate = Color("183539")
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.no_depth_test = false
+		marker.add_child(label)
+		waymark_visuals.append(marker)
+		waymark_labels.append(label)
+
 
 func _project(pos: Vector4, angle: float) -> Vector3:
 	return Vector3(pos.x, pos.y, pos.z * cos(angle) + pos.w * sin(angle))

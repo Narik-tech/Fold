@@ -1,6 +1,6 @@
 # FOLD / The Quiet Dimension — original puzzle designs
 
-These three original levels introduce movement through four spatial coordinates. X is always available, Y is height, and rotating exchanges the visible depth direction between Z and W. Rotation preserves the player's coordinates, including the hidden coordinate. Solving a puzzle therefore changes the player's position in four dimensions; it does not toggle arbitrary geometry.
+These four original levels introduce movement through four spatial coordinates and combine it in a maze. X is always available, Y is height, and rotating exchanges the visible depth direction between Z and W. Rotation preserves the player's coordinates, including the hidden coordinate. Solving a puzzle therefore changes the player's position in four dimensions; it does not toggle arbitrary geometry.
 
 All coordinates below are `(X, Y, Z, W)` at the player's feet. Collectible coordinates in the `levels/*.tres` resources are floating centers, 0.85 units above the intended standing surface. Each resource also includes deterministic resting waypoints under `solution` and zero-based `jump_segments`: a value of 7 means jump from waypoint 7 to waypoint 8. `LevelData.solutions()` returns all waypoint arrays. Create and edit gardens visually using [FOLD Levels](LEVEL_EDITOR.md).
 
@@ -47,6 +47,27 @@ The first wall, at X -2.7, is thin in W. The second wall, at X 0, is thin in Z a
 8. Jump onto the final stair at `(4.65, 2.4, 0, 0)` and walk to the exit.
 
 Each rise is 0.8 units, below the approximately 1.44-unit jump apex. Stair footprints overlap slightly so there are no accidental cracks. The final platform is too high to reach directly from the ground. Both walls are 4 units tall.
+
+## 04 / The fourfold labyrinth
+
+**Idea:** learn the connections between two overlapping mazes, then climb above them and discover a route home.
+
+The lower garden contains 18 rooms on a five-unit grid: X and Z are -5, 0, or +5; W is 0 or +5. Nineteen passages connect them into a maze with two loops. The floor is continuous beneath the rooms, corridors have at least 4.55 units of clear space, and 2.8-unit walls block jumping directly through the lower maze. Teal landmark rings identify rooms and fold courts. Echoes can be collected in any order.
+
+X connects neighboring rooms; Z leads around each maze layer; W opens passages between the two layers. Y is essential to reach the fifth echo and gate. The ascent has four 0.8-unit jumps to Y 3.2. Broad sky bridges continue through W and Z before two more 0.8-unit jumps reach the gate at Y 4.8. Once above the maze, attentive players can also use wall tops as shortcuts.
+
+Each named echo saves its safe feet position as the latest checkpoint. Falling preserves echoes, and R starts the chapter over. Amber rings mark collected echoes. H starts with the earliest missing echo after a pickup, advances through the route hints and gate hint, then cycles back while any echoes remain. Landmarks obey the same slice visibility as the world.
+
+Spoiler route (hold E from 0° to approximately 90° to move in W; hold Q back toward 0° to move in Z):
+
+1. **Lantern:** from `(-5, 0, -5, 0)`, walk along Z to the folding court at Z 0. Fold and walk to W +5. Return to Z movement and walk to Z -5.
+2. **Orchard:** return to Z 0, walk across X to 0, follow Z to -5, then X to +5.
+3. **Heart:** at Orchard, fold back to W 0. Cross X to 0, then Z to 0. This central room also connects back to the entrance court.
+4. **Stillwater:** continue to Z +5 and X -5. Fold to W +5 to find the hidden alcove. The neighboring room at X 0 offers a second W passage, creating another short loop.
+5. **Sky:** leave Stillwater along X to +5. Fold to W 0, then follow Z to 0. Pale steps lead east: jump to X 7 / Y 0.8, X 8.4 / Y 1.6, X 9.8 / Y 2.4, and X 11.2 / Y 3.2. Fold to W +5, follow the bridge back to X +5, then along Z to -5.
+6. **Home:** stay at Z -5 / W +5 and cross the sky bridge toward negative X. Jump from X -1 to the stair at X -2.4 / Y 4.0, then onto the terrace at X -3.8 / Y 4.8. The amber gate waits at X -5.
+
+The editable resource is `levels/04_the_fourfold_labyrinth.tres`. Its proof route has 31 supported waypoints and six jump segments. Gameplay tests run the complete route with real physics, check alternate loop traversal and out-of-order collection, and verify that the entrance walls block direct shortcuts.
 
 ## Geometry conventions for validation
 

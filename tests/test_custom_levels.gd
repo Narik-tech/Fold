@@ -26,6 +26,7 @@ func _run() -> void:
 	_expect(game.load_custom_level(draft), "A valid authored resource starts a playtest")
 	_expect(game.started and game.levels.size() == 1 and game.level.title == draft.title, "Custom play starts with the authored level only")
 	_expect(game.hud._custom_level and not game.hud._level_nav.visible, "Custom HUD hides campaign navigation")
+	_expect(not game.hud._labyrinth_button.visible, "Custom play hides the campaign labyrinth shortcut")
 	game._hint()
 	_expect(game.hint_index == 0, "Empty custom hints are safe")
 	var original_center: Vector4 = game.level.boxes[0].center

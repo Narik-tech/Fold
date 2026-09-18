@@ -59,6 +59,7 @@ func _run() -> void:
 	independent.undo()
 	_expect(independent.object_position(2) == old_center, "History restores the independent box copy")
 	_test_shapes()
+	_test_echo_metadata()
 	await _test_canvas()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 	print("%s: %d level-editor checks." % ["PASS" if failures == 0 else "FAIL", checks])
@@ -104,6 +105,57 @@ func _test_shapes() -> void:
 	_expect(source.shapes[0].center == position and independent.level.shapes[-1].center == position, "Editing aliased frame resources isolates the source and every list entry")
 	var previous_count: int = independent.object_count()
 	_expect(independent.add_shape("unsupported") == -1 and independent.object_count() == previous_count, "An unknown frame kind does not create an invalid object")
+
+func _test_echo_metadata() -> void:
+	var document := Document.new()
+	_expect(document.open_level("res://levels/04_the_fourfold_labyrinth.tres") == OK, "The labyrinth opens in the level editor")
+	var original: Dictionary = document.level.to_dictionary()
+	var echo: int = 2 + document.level.boxes.size() + document.level.shapes.size()
+	var position: Vector4 = document.object_position(echo)
+	var checkpoint: Vector4 = document.level.echo_checkpoints[0]
+	var delta := Vector4(0.5, 0.8, -0.5, 1.0)
+	document.set_position(echo, position + delta, true)
+	document.set_position(echo, position + delta * 2.0, true)
+	_expect(document.level.echo_checkpoints[0].is_equal_approx(checkpoint + delta * 2.0), "Moving an echo shifts its checkpoint by the same four-dimensional delta")
+	_expect((document.level.seeds[0] - document.level.echo_checkpoints[0]).is_equal_approx(position - checkpoint), "Moving an echo preserves the checkpoint's feet offset")
+	document.undo()
+	_expect(document.level.to_dictionary() == original, "Undo restores the entire merged echo move and its checkpoint")
+	document.redo()
+	_expect(document.level.echo_checkpoints[0].is_equal_approx(checkpoint + delta * 2.0), "Redo restores the moved checkpoint with its echo")
+	var added: int = document.add_object("echo")
+	_expect(document.level.echo_names[-1] == "Echo 6" and document.level.echo_checkpoints[-1] == Vector4.ZERO, "Adding an echo supplies a name and checkpoint beneath its floating center")
+	_expect(document.level.validation_errors().is_empty(), "Adding a named echo keeps the resource valid")
+	var before_duplicate: Dictionary = document.level.to_dictionary()
+	var duplicate: int = document.duplicate_object(echo)
+	_expect(document.level.echo_names[-1] == document.level.echo_names[0] + " (copy)", "Duplicating an echo retains its name with a copy suffix")
+	_expect(document.level.echo_checkpoints[-1].is_equal_approx(document.level.echo_checkpoints[0] + Vector4(1, 0, 0, 0)), "Duplicating an echo offsets its checkpoint with its position")
+	document.undo()
+	_expect(document.level.to_dictionary() == before_duplicate, "Undo removes an echo duplicate and both metadata entries")
+	document.redo()
+	_expect(document.level.validation_errors().is_empty() and duplicate == document.object_count() - 1, "Redo restores a valid echo duplicate with paired metadata")
+	var before_delete: Dictionary = document.level.to_dictionary()
+	document.delete_object(added)
+	_expect(document.level.echo_names.size() == document.level.seeds.size() and document.level.echo_checkpoints.size() == document.level.seeds.size(), "Deleting an echo keeps both metadata arrays paired")
+	_expect(document.level.echo_names[-1] == document.level.echo_names[0] + " (copy)", "Deleting a middle echo preserves the next echo's metadata")
+	document.undo()
+	_expect(document.level.to_dictionary() == before_delete, "Undo restores a deleted echo and its metadata")
+	document.redo()
+	_expect(document.save_level(TEST_PATH) == OK, "The edited labyrinth saves after echo operations")
+	var reopened := Document.new()
+	_expect(reopened.open_level(TEST_PATH) == OK and reopened.level.to_dictionary() == document.level.to_dictionary(), "Edited echo names and checkpoints survive saving and reopening")
+	for names_enabled: bool in [false, true]:
+		for checkpoints_enabled: bool in [false, true]:
+			var legacy := Document.new()
+			if names_enabled:
+				legacy.level.echo_names = ["First"]
+			if checkpoints_enabled:
+				legacy.level.echo_checkpoints = [Vector4.ZERO]
+			var new_echo: int = legacy.add_object("echo")
+			var cloned_echo: int = legacy.duplicate_object(new_echo)
+			legacy.set_position(cloned_echo, Vector4(2.0, 1.85, 1.0, 2.0))
+			legacy.delete_object(new_echo)
+			_expect(legacy.level.echo_names.is_empty() == not names_enabled and legacy.level.echo_checkpoints.is_empty() == not checkpoints_enabled and legacy.level.validation_errors().is_empty(), "Echo metadata stays optional and independent (names %s, checkpoints %s)" % [names_enabled, checkpoints_enabled])
+
 
 func _test_canvas() -> void:
 	var document := Document.new()

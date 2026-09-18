@@ -26,6 +26,14 @@ const SUPPORT_EPSILON: float = 0.05
 @export var shapes: Array[FoldShape] = []
 @export var seeds: Array[Vector4] = []
 
+@export_category("Optional wayfinding")
+## When provided, each entry corresponds to the echo at the same index.
+@export var echo_names: Array[String] = []
+@export var echo_checkpoints: Array[Vector4] = []
+## Waymarks use feet coordinates and are decorative, never solid.
+@export var waymark_positions: Array[Vector4] = []
+@export var waymark_labels: Array[String] = []
+
 @export_category("Optional solution")
 @export var solution: Array[Vector4] = []
 ## Zero-based indices of segments that need a jump: 0 joins waypoints 0 and 1.
@@ -53,6 +61,10 @@ func to_dictionary() -> Dictionary:
 		"solution": solution.duplicate(),
 		"jump_segments": jump_segments.duplicate(),
 	}
+	for field: String in ["echo_names", "echo_checkpoints", "waymark_positions", "waymark_labels"]:
+		var values: Array = get(field)
+		if not values.is_empty():
+			snapshot[field] = values.duplicate()
 	# Preserve the original dictionary contract for existing box-only levels.
 	if not shapes.is_empty():
 		var runtime_shapes: Array[Dictionary] = []
@@ -141,6 +153,18 @@ func validation_errors() -> PackedStringArray:
 	for index in range(seeds.size()):
 		if not seeds[index].is_finite():
 			errors.append("Echo %d must contain finite coordinates." % (index + 1))
+	if not echo_names.is_empty() and echo_names.size() != seeds.size():
+		errors.append("Echo names must contain one name per echo, or be empty.")
+	if not echo_checkpoints.is_empty() and echo_checkpoints.size() != seeds.size():
+		errors.append("Echo checkpoints must contain one feet position per echo, or be empty.")
+	if waymark_positions.size() != waymark_labels.size():
+		errors.append("Waymark positions and labels must contain the same number of entries.")
+	for index in range(echo_checkpoints.size()):
+		if not echo_checkpoints[index].is_finite():
+			errors.append("Echo checkpoint %d must contain finite coordinates." % (index + 1))
+	for index in range(waymark_positions.size()):
+		if not waymark_positions[index].is_finite():
+			errors.append("Waymark %d must contain finite coordinates." % (index + 1))
 	for index in range(solution.size()):
 		if not solution[index].is_finite():
 			errors.append("Solution waypoint %d must contain finite coordinates." % (index + 1))
@@ -162,6 +186,8 @@ func validation_warnings() -> PackedStringArray:
 	var edge_shapes: Array[Dictionary] = _shape_geometry_for_validation()
 	_validate_position(start, "Start", warnings, edge_shapes)
 	_validate_position(goal, "Exit", warnings, edge_shapes)
+	for index in range(echo_checkpoints.size()):
+		_validate_position(echo_checkpoints[index], "Echo checkpoint %d" % (index + 1), warnings, edge_shapes)
 	if seeds.is_empty():
 		warnings.append("There are no echoes; the exit will be unlocked immediately.")
 	if solution.is_empty():

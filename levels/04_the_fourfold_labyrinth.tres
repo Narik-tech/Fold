@@ -1,0 +1,238 @@
+[gd_resource type="Resource" script_class="FoldLevel" load_steps=39 format=3]
+
+[ext_resource type="Script" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" path="res://levels/box_definition.gd" id="2_box"]
+
+[sub_resource type="Resource" id="Foundation"]
+script = ExtResource("2_box")
+center = Vector4(0.0, -0.5, 0.0, 2.5)
+size = Vector4(15.5, 1.0, 15.5, 10.5)
+kind = "stone"
+
+[sub_resource type="Resource" id="Wall_A00_A10"]
+script = ExtResource("2_box")
+center = Vector4(-2.5, 1.4, -5.0, 0.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_A00_B00"]
+script = ExtResource("2_box")
+center = Vector4(-5.0, 1.4, -5.0, 2.5)
+size = Vector4(5.45, 2.8, 5.45, 0.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_A01_A02"]
+script = ExtResource("2_box")
+center = Vector4(-5.0, 1.4, 2.5, 0.0)
+size = Vector4(5.45, 2.8, 0.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_A10_B10"]
+script = ExtResource("2_box")
+center = Vector4(0.0, 1.4, -5.0, 2.5)
+size = Vector4(5.45, 2.8, 5.45, 0.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_A11_A21"]
+script = ExtResource("2_box")
+center = Vector4(2.5, 1.4, 0.0, 0.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_A11_B11"]
+script = ExtResource("2_box")
+center = Vector4(0.0, 1.4, 0.0, 2.5)
+size = Vector4(5.45, 2.8, 5.45, 0.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_A12_A22"]
+script = ExtResource("2_box")
+center = Vector4(2.5, 1.4, 5.0, 0.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_A20_A21"]
+script = ExtResource("2_box")
+center = Vector4(5.0, 1.4, -2.5, 0.0)
+size = Vector4(5.45, 2.8, 0.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_A21_B21"]
+script = ExtResource("2_box")
+center = Vector4(5.0, 1.4, 0.0, 2.5)
+size = Vector4(5.45, 2.8, 5.45, 0.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_B00_B10"]
+script = ExtResource("2_box")
+center = Vector4(-2.5, 1.4, -5.0, 5.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_B01_B02"]
+script = ExtResource("2_box")
+center = Vector4(-5.0, 1.4, 2.5, 5.0)
+size = Vector4(5.45, 2.8, 0.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_B11_B12"]
+script = ExtResource("2_box")
+center = Vector4(0.0, 1.4, 2.5, 5.0)
+size = Vector4(5.45, 2.8, 0.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_B20_B21"]
+script = ExtResource("2_box")
+center = Vector4(5.0, 1.4, -2.5, 5.0)
+size = Vector4(5.45, 2.8, 0.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="Wall_B21_B22"]
+script = ExtResource("2_box")
+center = Vector4(5.0, 1.4, 2.5, 5.0)
+size = Vector4(5.45, 2.8, 0.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="WestBoundary"]
+script = ExtResource("2_box")
+center = Vector4(-7.5, 1.4, 0.0, 2.5)
+size = Vector4(0.45, 2.8, 15.45, 10.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="NorthBoundary"]
+script = ExtResource("2_box")
+center = Vector4(0.0, 1.4, -7.5, 2.5)
+size = Vector4(15.45, 2.8, 0.45, 10.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="SouthBoundary"]
+script = ExtResource("2_box")
+center = Vector4(0.0, 1.4, 7.5, 2.5)
+size = Vector4(15.45, 2.8, 0.45, 10.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="NearBoundary"]
+script = ExtResource("2_box")
+center = Vector4(0.0, 1.4, 0.0, -2.5)
+size = Vector4(15.45, 2.8, 15.45, 0.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="FarBoundary"]
+script = ExtResource("2_box")
+center = Vector4(0.0, 1.4, 0.0, 7.5)
+size = Vector4(15.45, 2.8, 15.45, 0.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="EastBoundary_00"]
+script = ExtResource("2_box")
+center = Vector4(7.5, 1.4, -5.0, 0.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="EastBoundary_02"]
+script = ExtResource("2_box")
+center = Vector4(7.5, 1.4, 5.0, 0.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="EastBoundary_10"]
+script = ExtResource("2_box")
+center = Vector4(7.5, 1.4, -5.0, 5.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="EastBoundary_11"]
+script = ExtResource("2_box")
+center = Vector4(7.5, 1.4, 0.0, 5.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="EastBoundary_12"]
+script = ExtResource("2_box")
+center = Vector4(7.5, 1.4, 5.0, 5.0)
+size = Vector4(0.45, 2.8, 5.45, 5.45)
+kind = "wall"
+
+[sub_resource type="Resource" id="StairGarden"]
+script = ExtResource("2_box")
+center = Vector4(9.1, -0.5, 0.0, 0.0)
+size = Vector4(6.8, 1.0, 4.2, 4.2)
+kind = "stone"
+
+[sub_resource type="Resource" id="Ascent_0"]
+script = ExtResource("2_box")
+center = Vector4(7.0, 0.4, 0.0, 0.0)
+size = Vector4(1.5, 0.8, 2.8, 2.8)
+kind = "step"
+
+[sub_resource type="Resource" id="Ascent_1"]
+script = ExtResource("2_box")
+center = Vector4(8.4, 0.8, 0.0, 0.0)
+size = Vector4(1.5, 1.6, 2.8, 2.8)
+kind = "step"
+
+[sub_resource type="Resource" id="Ascent_2"]
+script = ExtResource("2_box")
+center = Vector4(9.8, 1.2000000000000002, 0.0, 0.0)
+size = Vector4(1.5, 2.4000000000000004, 2.8, 2.8)
+kind = "step"
+
+[sub_resource type="Resource" id="Ascent_3"]
+script = ExtResource("2_box")
+center = Vector4(11.2, 1.6, 0.0, 0.0)
+size = Vector4(1.5, 3.2, 2.8, 2.8)
+kind = "step"
+
+[sub_resource type="Resource" id="SkyFold"]
+script = ExtResource("2_box")
+center = Vector4(11.2, 3.0, 0.0, 2.5)
+size = Vector4(1.5, 0.4, 2.8, 7.8)
+kind = "bridge"
+
+[sub_resource type="Resource" id="SkyEast"]
+script = ExtResource("2_box")
+center = Vector4(8.1, 3.0, 0.0, 5.0)
+size = Vector4(6.2, 0.4, 2.8, 2.8)
+kind = "bridge"
+
+[sub_resource type="Resource" id="SkyNorth"]
+script = ExtResource("2_box")
+center = Vector4(5.0, 3.0, -2.5, 5.0)
+size = Vector4(2.8, 0.4, 7.8, 2.8)
+kind = "bridge"
+
+[sub_resource type="Resource" id="SkyHome"]
+script = ExtResource("2_box")
+center = Vector4(1.4, 3.0, -5.0, 5.0)
+size = Vector4(7.2, 0.4, 2.8, 2.8)
+kind = "bridge"
+
+[sub_resource type="Resource" id="HomeStep"]
+script = ExtResource("2_box")
+center = Vector4(-2.4, 3.6, -5.0, 5.0)
+size = Vector4(1.5, 0.8, 2.8, 2.8)
+kind = "step"
+
+[sub_resource type="Resource" id="GateTerrace"]
+script = ExtResource("2_box")
+center = Vector4(-4.7, 4.0, -5.0, 5.0)
+size = Vector4(3.2, 1.6, 3.6, 3.6)
+kind = "step"
+
+[resource]
+script = ExtResource("1_level")
+title = "04  /  The fourfold labyrinth"
+subtitle = "Two depths below. A way home above."
+lesson = "Explore the teal courts in Z and W. Find five echoes, then climb home. Each echo saves a checkpoint; H gives guidance."
+hints = Array[String](["Lantern: follow Z from the entrance to the teal court (Z 0). Fold to W +5, then return along Z to -5.", "Orchard: from Lantern, return to Z 0 and cross X to the crossroads. At X 0, go to Z -5, then X +5.", "Heart: from Orchard, fold back to W 0. Walk to X 0, then follow Z to the central room at Z 0.", "Stillwater: from Heart, follow Z to +5, then X to -5. Fold into W +5 to discover the quiet alcove.", "Sky: leave Stillwater along X to +5. Fold to W 0, return to Z 0, and climb the pale steps outside the east wall. Follow the sky walk through W +5, X +5, then Z -5."])
+start = Vector4(-5.0, 0.0, -5.0, 0.0)
+goal = Vector4(-5.0, 4.8, -5.0, 5.0)
+goal_hint = "From Sky at (X +5, Z -5, W +5), follow the raised bridge toward negative X. Jump the two final steps to the amber gate."
+boxes = Array[ExtResource("2_box")]([SubResource("Foundation"), SubResource("Wall_A00_A10"), SubResource("Wall_A00_B00"), SubResource("Wall_A01_A02"), SubResource("Wall_A10_B10"), SubResource("Wall_A11_A21"), SubResource("Wall_A11_B11"), SubResource("Wall_A12_A22"), SubResource("Wall_A20_A21"), SubResource("Wall_A21_B21"), SubResource("Wall_B00_B10"), SubResource("Wall_B01_B02"), SubResource("Wall_B11_B12"), SubResource("Wall_B20_B21"), SubResource("Wall_B21_B22"), SubResource("WestBoundary"), SubResource("NorthBoundary"), SubResource("SouthBoundary"), SubResource("NearBoundary"), SubResource("FarBoundary"), SubResource("EastBoundary_00"), SubResource("EastBoundary_02"), SubResource("EastBoundary_10"), SubResource("EastBoundary_11"), SubResource("EastBoundary_12"), SubResource("StairGarden"), SubResource("Ascent_0"), SubResource("Ascent_1"), SubResource("Ascent_2"), SubResource("Ascent_3"), SubResource("SkyFold"), SubResource("SkyEast"), SubResource("SkyNorth"), SubResource("SkyHome"), SubResource("HomeStep"), SubResource("GateTerrace")])
+seeds = Array[Vector4]([Vector4(-5.0, 0.85, -5.0, 5.0), Vector4(5.0, 0.85, -5.0, 5.0), Vector4(0.0, 0.85, 0.0, 0.0), Vector4(-5.0, 0.85, 5.0, 5.0), Vector4(5.0, 4.05, -5.0, 5.0)])
+echo_names = Array[String](["Lantern", "Orchard", "Heart", "Stillwater", "Sky"])
+echo_checkpoints = Array[Vector4]([Vector4(-5.0, 0.0, -5.0, 5.0), Vector4(5.0, 0.0, -5.0, 5.0), Vector4(0.0, 0.0, 0.0, 0.0), Vector4(-5.0, 0.0, 5.0, 5.0), Vector4(5.0, 3.2, -5.0, 5.0)])
+waymark_positions = Array[Vector4]([Vector4(-5.0, 0.0, -5.8, 0.0), Vector4(-5.0, 0.0, 0.0, 0.0), Vector4(-5.0, 0.0, -5.8, 5.0), Vector4(0.0, 0.0, 0.0, 5.0), Vector4(5.0, 0.0, -5.8, 5.0), Vector4(0.0, 0.0, -0.7, 0.0), Vector4(-5.0, 0.0, 5.0, 0.0), Vector4(-5.0, 0.0, 5.8, 5.0), Vector4(5.0, 0.0, 0.0, 0.0), Vector4(11.2, 3.2, 0.0, 0.0), Vector4(5.0, 3.2, -5.8, 5.0), Vector4(-5.0, 4.8, -5.8, 5.0)])
+waymark_labels = Array[String](["THE FOURFOLD LABYRINTH\nFive echoes. One way home.", "FOLDING COURT\nHold E to explore W", "01 / LANTERN", "THE CROSSROADS\nExplore both depths", "02 / ORCHARD\nA way back through W", "03 / HEART", "QUIET ALCOVE\nA room beyond this slice", "04 / STILLWATER", "THE ASCENT\nSpace to climb", "SKY WALK\nFollow W +5", "05 / SKY ECHO", "HOME"])
+solution = Array[Vector4]([Vector4(-5.0, 0.0, -5.0, 0.0), Vector4(-5.0, 0.0, 0.0, 0.0), Vector4(-5.0, 0.0, 0.0, 5.0), Vector4(-5.0, 0.0, -5.0, 5.0), Vector4(-5.0, 0.0, 0.0, 5.0), Vector4(0.0, 0.0, 0.0, 5.0), Vector4(0.0, 0.0, -5.0, 5.0), Vector4(5.0, 0.0, -5.0, 5.0), Vector4(5.0, 0.0, -5.0, 0.0), Vector4(0.0, 0.0, -5.0, 0.0), Vector4(0.0, 0.0, 0.0, 0.0), Vector4(0.0, 0.0, 5.0, 0.0), Vector4(-5.0, 0.0, 5.0, 0.0), Vector4(-5.0, 0.0, 5.0, 5.0), Vector4(0.0, 0.0, 5.0, 5.0), Vector4(5.0, 0.0, 5.0, 5.0), Vector4(5.0, 0.0, 5.0, 0.0), Vector4(5.0, 0.0, 0.0, 0.0), Vector4(5.6, 0.0, 0.0, 0.0), Vector4(7.0, 0.8, 0.0, 0.0), Vector4(8.4, 1.6, 0.0, 0.0), Vector4(9.8, 2.4, 0.0, 0.0), Vector4(11.2, 3.2, 0.0, 0.0), Vector4(11.2, 3.2, 0.0, 5.0), Vector4(5.0, 3.2, 0.0, 5.0), Vector4(5.0, 3.2, -5.0, 5.0), Vector4(0.0, 3.2, -5.0, 5.0), Vector4(-1.0, 3.2, -5.0, 5.0), Vector4(-2.4, 4.0, -5.0, 5.0), Vector4(-3.8, 4.8, -5.0, 5.0), Vector4(-5.0, 4.8, -5.0, 5.0)])
+jump_segments = Array[int]([18, 19, 20, 21, 27, 28])

@@ -30,6 +30,7 @@ func _run() -> void:
 	game._start()
 	_expect(game.started, "The title screen starts the game")
 	_test_level_routes()
+	_test_maze_loops_and_barriers()
 	_test_wall_obstruction()
 	_test_missing_bridge()
 	_test_respawn_retains_echoes()
@@ -44,7 +45,7 @@ func _run() -> void:
 	game.queue_free()
 	await process_frame
 	if failures.is_empty():
-		print("PASS: %d gameplay checks; %d physics frames; all 3 levels completed through movement, folds, and jumps." % [checks, simulated_frames])
+		print("PASS: %d gameplay checks; %d physics frames; all %d campaign levels completed through movement, folds, and jumps." % [checks, simulated_frames, LevelData.CAMPAIGN_PATHS.size()])
 		quit(0)
 	else:
 		printerr("FAIL: %d of %d gameplay checks failed." % [failures.size(), checks])
@@ -66,6 +67,30 @@ func _test_level_routes() -> void:
 		_expect(game.completed, "Level %d reaches its unlocked exit" % (index + 1))
 		_expect(game.grounded and game.position4.distance_to(game.level.goal) < POSITION_EPSILON, "Level %d finishes standing at its exit" % (index + 1))
 		print("Level %d: %d/%d echoes, completed=%s, feet=%s" % [index + 1, game._collected_count(), game.collected.size(), game.completed, game.position4])
+
+
+func _test_maze_loops_and_barriers() -> void:
+	game._select_level(3)
+	for unused in range(100):
+		_step(Vector2.RIGHT)
+	_expect(game.position4.x < -2.9 and game.grounded, "Maze entrance wall blocks a direct X shortcut")
+	game._select_level(3)
+	_fold_to(1)
+	for unused in range(100):
+		_step(Vector2.DOWN)
+	_expect(game.position4.w < 2.1 and game._collected_count() == 0, "Lantern cannot be collected by folding straight through the entrance wall")
+	# Alternate edges form a forgiving loop instead of forcing a long retrace.
+	game._select_level(3)
+	var loop: Array[Vector4] = [
+		Vector4(-5, 0, 0, 0), Vector4(0, 0, 0, 0), Vector4(0, 0, 5, 0),
+		Vector4(0, 0, 5, 5), Vector4(-5, 0, 5, 5), Vector4(-5, 0, 5, 0),
+		Vector4(0, 0, 5, 0), Vector4(0, 0, 0, 0), Vector4(-5, 0, 0, 0),
+	]
+	for index in range(loop.size()):
+		if not _move_to(loop[index], false, "maze alternate loop %d" % index):
+			break
+	_expect(game.collected[2] and game.collected[3], "Heart and Stillwater can be discovered before Lantern without locking the route")
+	_expect(not game.completed, "A shortcut loop still requires the other echoes and elevated gate")
 
 
 func _test_wall_obstruction() -> void:

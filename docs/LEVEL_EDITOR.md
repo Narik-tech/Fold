@@ -31,7 +31,15 @@ The grids are top-down projections. The slice controls help inspect geometry at 
 
 Each box uses a **center** and full **size** along all four axes. Its top is `center.y + size.y / 2`. A floor centered at Y `-0.5` with size Y `1` therefore has top Y `0`. Start and goal positions use the player's feet. Echo positions use floating centers, usually `0.85` above the walking surface.
 
-The traveler has radius `0.27` along X, Z, and W and height `1.25`. Leave clearance in all four coordinates. Jump height is about `1.44`; a level-ground jump covers about `3.36` units. The existing stairs rise `0.8` per step. Falling below Y `-7` returns the player to the start.
+The traveler has radius `0.27` along X, Z, and W and height `1.25`. Leave clearance in all four coordinates. Jump height is about `1.44`; a level-ground jump covers about `3.36` units. The existing stairs rise `0.8` per step. Falling below Y `-7` returns the player to the start or latest echo checkpoint.
+
+## Maze landmarks and checkpoints
+
+The labyrinth resource demonstrates optional fields available in the standard Godot Resource Inspector under **Optional wayfinding**. `echo_names` and `echo_checkpoints`, when used, each have one entry per echo. Checkpoints are safe feet coordinates; validation warns about unsupported or obstructed placements. Named echoes leave an amber ring after collection. For named-echo levels, write one route hint per echo and a final `goal_hint`; H cycles the guidance while echoes remain.
+
+`waymark_positions` and `waymark_labels` pair decorative feet coordinates with short labels. These markers follow the current 4D slice and have no collision. Keep labels brief so the world stays readable.
+
+The FOLD Levels workspace preserves this metadata through saves and undo. Adding, duplicating, moving, or deleting an echo keeps its optional name and checkpoint aligned; moving an echo also moves its checkpoint by the same offset. Edit the optional arrays in the Resource Inspector to customize names, checkpoints, and landmarks. Levels with empty arrays keep the original behavior.
 
 ## Explore regular 4D shapes
 

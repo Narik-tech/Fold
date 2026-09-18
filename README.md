@@ -1,6 +1,6 @@
 # FOLD — The Quiet Dimension
 
-A playable, original four-dimensional puzzle platformer made in Godot. Explore three floating gardens, collect their echoes, and find the amber gate. Folding continuously rotates the view through Z and W, exposing paths that lie outside your current three-dimensional slice.
+A playable, original four-dimensional puzzle platformer made in Godot. Explore four floating gardens, collect their echoes, and find the amber gate. Folding continuously rotates the view through Z and W, exposing paths that lie outside your current three-dimensional slice.
 
 Inspired by the spatial navigation described by [Miegakure](https://miegakure.com/). FOLD has its own levels, visuals, character, and synthesized audio.
 
@@ -9,6 +9,8 @@ Inspired by the spatial navigation described by [Miegakure](https://miegakure.co
 ## Play
 
 On this Windows workspace, double-click **PLAY.cmd**. A portable Godot 4.6 engine is already available in `.tools/godot`.
+
+Choose **Explore the labyrinth** on the title screen to jump straight into the new maze, or press **Escape → 04** during play. The fourth chapter has two connected maze layers, five named echoes, checkpoint respawns, and a raised sky walk to the gate. Follow the teal landmark rings and use **H** if you need a direction.
 
 Alternatively, import **project.godot** into Godot 4.6 or newer and press **F5**. The project uses the Compatibility renderer and has no external asset dependencies. The included FOLD Levels add-on provides visual level authoring.
 
@@ -23,9 +25,9 @@ Alternatively, import **project.godot** into Godot 4.6 or newer and press **F5**
 | Escape | Pause and free the cursor / resume mouse look |
 | M | Mute / unmute |
 | Enter | Start / continue after completion |
-| 01 / 02 / 03 buttons in the pause menu | Choose a garden |
+| 01 / 02 / 03 / 04 buttons in the pause menu | Choose a garden |
 
-Fold while standing on a surface. Hold Q or E to rotate at 90° per second, and release to keep any slice angle. Rotation continues through a full circle. Find every echo in the garden, then enter its gate. Falling returns you to the start and preserves collected echoes; restarting clears the garden. The orientation panel shows your slice angle, identifies mixed Z/W views, and displays your coordinates. Each hint becomes more explicit when you press H again.
+Fold while standing on a surface. Hold Q or E to rotate at 90° per second, and release to keep any slice angle. Rotation continues through a full circle. Find every echo in the garden, then enter its gate. Falling returns you to the start or your latest checkpoint and preserves collected echoes; restarting clears the garden. The orientation panel shows your slice angle, identifies mixed Z/W views, and displays your coordinates. Press H for route guidance.
 
 The third-person camera follows the traveler, and the mouse controls its direction and pitch. WASD and arrow keys stay relative to the camera as you look around: W moves into the view, S moves toward the camera, and A/D move left/right across the view. The traveler faces the direction of movement, while the camera moves closer when walls or solid edges obstruct the view. Starting or resuming captures the cursor for mouse look; Escape pauses and frees it for the menu. Restarting or respawning resets the camera behind the traveler, facing toward the gate.
 
@@ -34,8 +36,9 @@ The third-person camera follows the traveler, and the mouse controls its directi
 1. **A direction unseen:** walk around a wall's edge in W.
 2. **The missing span:** discover a bridge outside the starting slice.
 3. **Two turns from home:** preserve hidden coordinates, use both depth axes, and climb the final steps.
+4. **The fourfold labyrinth:** explore 18 rooms across Z and W, discover loops and five echoes, then climb to a hidden sky walk and the elevated gate. Each echo saves a checkpoint; collected echoes leave a small amber ring. Hints follow the earliest missing echo and can be cycled with H.
 
-These are three short puzzle chambers rather than a full campaign. Progress is kept for the current session. Spoiler walkthroughs and geometry notes are in [docs/LEVELS.md](docs/LEVELS.md).
+The first three gardens introduce the mechanics; the fourth combines them into a longer maze. Progress is kept for the current session. In the labyrinth, falling returns to the latest echo checkpoint; R resets the entire chapter. Spoiler walkthroughs and geometry notes are in [docs/LEVELS.md](docs/LEVELS.md).
 
 ## How the fourth dimension works
 
@@ -59,7 +62,7 @@ Open **4D Samples** in the editor to try one simple level per shape. Each includ
 
 - `scenes/main.tscn` and `scripts/main.gd`: compose the game systems; coordinate 4D movement, collision, and session state.
 - `game/world_view.tscn` and `game/world_view.gd`: own environment, traveler, level geometry, and slice rendering.
-- `levels/`: typed `FoldLevel` / `FoldBox` / `FoldShape` resources and the three campaign gardens as editable `.tres` files; `levels/samples/` contains six shape showcases.
+- `levels/`: typed `FoldLevel` / `FoldBox` / `FoldShape` resources and four campaign gardens as editable `.tres` files; `levels/samples/` contains six shape showcases.
 - `scripts/level_data.gd`: explicit campaign catalog; returns independent runtime snapshots.
 - `scripts/slice_geometry.gd`: pure slab intersection and collision calculations.
 - `scripts/polytope_geometry.gd` and `scripts/edge_geometry.gd`: regular 4D topology, solid edge beams, exact edge collision, and sliced edge meshes.
@@ -75,6 +78,7 @@ Run tests from the project directory (replace the executable with your Godot pat
 ```powershell
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_slice_geometry.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_playthrough.gd
+& '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_maze_features.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_interactions.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_camera.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_level_resources.gd
@@ -86,7 +90,7 @@ Run tests from the project directory (replace the executable with your Godot pat
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_editor_ui.gd
 ```
 
-To produce a rendered screenshot in `test-output`, run with `-- --capture` or `-- --capture-title`. Add `--level2`, `--level3`, or `--folded` after the separator to inspect other views.
+To produce a rendered screenshot in `test-output`, run with `-- --capture` or `-- --capture-title`. Add `--level2`, `--level3`, `--level4`, or `--folded` after the separator to inspect other views. Run `--script tests/maze_preview.gd` without `--headless` to capture the labyrinth entrance, fold court, sky walk, and menus.
 
 Run `--script tests/editor_preview.gd` without `--headless` to capture the editor panel at desktop and compact sizes. Add `-- --playtest` to the `test_editor_ui.gd` command to also launch and stop a real game window. Import the project once in the editor before running scripts on a fresh checkout so Godot registers the named resource classes.
 

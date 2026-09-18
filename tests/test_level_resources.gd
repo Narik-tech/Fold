@@ -33,7 +33,7 @@ func _initialize() -> void:
 func _test_campaign_migration() -> void:
 	var expected: Array[Dictionary] = _original_levels()
 	var actual: Array[Dictionary] = Campaign.all_levels()
-	_expect(actual.size() == 3, "The campaign still contains exactly three levels")
+	_expect(actual.size() == 4, "The campaign contains the original three gardens and the fourfold labyrinth")
 	for index in range(mini(expected.size(), actual.size())):
 		_expect(actual[index] == expected[index], "Level %d preserves every original authored field" % (index + 1))
 	var definitions: Array[FoldLevel] = Campaign.definitions()
@@ -41,7 +41,23 @@ func _test_campaign_migration() -> void:
 		_expect(definitions[index].validation_errors().is_empty(), "Campaign level %d has valid resource data" % (index + 1))
 		_expect(definitions[index].validation_warnings().is_empty(), "Campaign level %d has supported, unobstructed endpoints" % (index + 1))
 	var routes: Array[Array] = Campaign.solutions()
-	_expect(routes.size() == 3 and routes[2] == expected[2].solution, "The solutions API retains the authored routes")
+	_expect(routes.size() == actual.size(), "Every campaign level exposes its authored route")
+	for index in range(mini(expected.size(), routes.size())):
+		_expect(routes[index] == expected[index].solution, "The solutions API preserves original route %d" % (index + 1))
+	if actual.size() > 3:
+		var maze: Dictionary = actual[3]
+		_expect(maze.title == "04  /  The fourfold labyrinth" and maze.seeds.size() == 5, "The fourth garden is the five-echo labyrinth")
+		_expect(maze.solution.size() > 2 and not maze.jump_segments.is_empty(), "The labyrinth includes an authored route with vertical traversal")
+		if not maze.solution.is_empty():
+			_expect(maze.solution.front() == maze.start and maze.solution.back() == maze.goal, "The labyrinth route connects its entrance to its exit")
+			var minimum: Vector4 = maze.solution[0]
+			var maximum: Vector4 = maze.solution[0]
+			for point: Vector4 in maze.solution:
+				for axis in range(4):
+					minimum[axis] = minf(minimum[axis], point[axis])
+					maximum[axis] = maxf(maximum[axis], point[axis])
+			for axis in range(4):
+				_expect(maximum[axis] - minimum[axis] > 1.0, "The labyrinth route traverses dimension %s" % "XYZW"[axis])
 
 
 func _test_snapshot_isolation() -> void:
