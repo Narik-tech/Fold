@@ -14,17 +14,20 @@ Alternatively, import **project.godot** into Godot 4.6 or newer and press **F5**
 
 | Input | Action |
 | --- | --- |
+| Mouse | Look around the traveler |
 | WASD / arrow keys | Move relative to the camera |
 | Space | Jump |
 | Hold Q / E | Rotate the slice in opposite directions (Q decreases the angle, E increases it) |
 | H | Show the next hint |
 | R | Restart the current garden |
-| Escape | Pause / resume |
+| Escape | Pause and free the cursor / resume mouse look |
 | M | Mute / unmute |
 | Enter | Start / continue after completion |
-| 01 / 02 / 03 buttons | Choose a garden |
+| 01 / 02 / 03 buttons in the pause menu | Choose a garden |
 
 Fold while standing on a surface. Hold Q or E to rotate at 90° per second, and release to keep any slice angle. Rotation continues through a full circle. Find every echo in the garden, then enter its gate. Falling returns you to the start and preserves collected echoes; restarting clears the garden. The orientation panel shows your slice angle, identifies mixed Z/W views, and displays your coordinates. Each hint becomes more explicit when you press H again.
+
+The third-person camera follows the traveler, and the mouse controls its direction and pitch. WASD and arrow keys stay relative to the camera as you look around: W moves into the view, S moves toward the camera, and A/D move left/right across the view. The traveler faces the direction of movement, while the camera moves closer when walls or solid edges obstruct the view. Starting or resuming captures the cursor for mouse look; Escape pauses and frees it for the menu. Restarting or respawning resets the camera behind the traveler, facing toward the gate.
 
 ## Gardens
 
@@ -73,6 +76,7 @@ Run tests from the project directory (replace the executable with your Godot pat
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_slice_geometry.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_playthrough.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_interactions.gd
+& '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_camera.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_level_resources.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_custom_levels.gd
 & '.tools/godot/Godot_v4.6-stable_win64_console.exe' --headless --path . --script tests/test_polytope_geometry.gd

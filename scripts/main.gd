@@ -44,6 +44,7 @@ var capture_mode: bool = false
 var muted: bool = false
 
 func _ready() -> void:
+	get_window().focus_exited.connect(_on_focus_exited)
 	hud.start_requested.connect(_start)
 	hud.restart_requested.connect(_restart)
 	hud.next_requested.connect(_next_level)
@@ -54,8 +55,10 @@ func _ready() -> void:
 	hud.set_custom_level(false)
 	_load_level(0)
 	hud.show_title()
+	_sync_mouse_mode()
 
 	var args := OS.get_cmdline_user_args()
+	capture_mode = "--capture" in args or "--capture-title" in args
 	var custom_level := level_override
 	for argument in args:
 		if argument.begins_with("--level="):
@@ -66,8 +69,7 @@ func _ready() -> void:
 				hud.show_toast("Could not open the selected level.")
 	if custom_level != null:
 		load_custom_level(custom_level)
-	if "--capture" in args or "--capture-title" in args:
-		capture_mode = true
+	if capture_mode:
 		if "--capture-title" not in args:
 			_start()
 		if "--level2" in args:
@@ -97,6 +99,17 @@ func load_custom_level(resource: FoldLevel) -> bool:
 	_load_level(0)
 	_start()
 	return true
+
+
+func _input(event: InputEvent) -> void:
+	if not started or paused or completed or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		return
+	if event is InputEventMouseMotion:
+		world.orbit_camera(event.screen_relative)
+		get_viewport().set_input_as_handled()
+	elif event is InputEventMouseButton:
+		# The hidden cursor must not activate HUD buttons during mouse look.
+		get_viewport().set_input_as_handled()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -134,11 +147,15 @@ func _physics_process(delta: float) -> void:
 		jump_buffer = maxf(0.0, jump_buffer - delta)
 		return
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	# Match the orthographic camera: W goes up-screen, D goes right-screen.
+	simulate_motion(_camera_relative_motion(input), delta)
+
+
+func _camera_relative_motion(input: Vector2) -> Vector2:
+	# Read the current view every tick, including while movement keys stay held.
+	# Flatten pitch so looking up/down never changes walking speed or height.
 	var right := Vector2(world.camera.global_basis.x.x, world.camera.global_basis.x.z).normalized()
 	var back := Vector2(world.camera.global_basis.z.x, world.camera.global_basis.z.z).normalized()
-	var motion := right * input.x + back * input.y
-	simulate_motion(motion, delta)
+	return right * input.x + back * input.y
 
 ## Shared by real input and deterministic playthrough tests.
 
@@ -276,6 +293,7 @@ func _check_objectives() -> void:
 			hud.show_toast("All echoes found. Return to the amber gate." if _collected_count() == collected.size() else "An echo found in the quiet dimension.")
 	if _collected_count() == collected.size() and position4.distance_to(level.goal) < 0.95:
 		completed = true
+		_sync_mouse_mode()
 		hud.show_completion(level_index == levels.size() - 1)
 		sound.play_complete()
 
@@ -298,18 +316,21 @@ func _refresh_view(delta: float = 0.0) -> void:
 	world.update_slice(position4, angle, active_axis, rotating, collected, clock, RADIUS)
 	var walking := last_motion.length() > 0.05 and started and not completed and not rotating
 	world.update_traveler(delta, clock, position4, angle, last_motion, distance_walked, grounded, walking)
+	world.update_camera(delta)
 	world.update_ambience(delta, clock)
 
 
 func _start() -> void:
 	started = true
 	paused = false
+	_sync_mouse_mode()
 	hud.hide_title()
 	hud.show_toast("Find the echoes. Reach the amber gate. Hold Q / E to turn your slice.")
 
 func _restart() -> void:
 	_load_level(level_index)
 	started = true
+	_sync_mouse_mode()
 	hud.hide_title()
 	sound.play_reset()
 
@@ -321,6 +342,8 @@ func _respawn() -> void:
 	angle = 0.0
 	rotating = false
 	jump_buffer = 0.0
+	last_motion = Vector2.ZERO
+	_reset_camera()
 	hud.show_toast("Back on solid ground. Your echoes are safe.")
 	sound.play_reset()
 
@@ -330,13 +353,29 @@ func _next_level() -> void:
 func _select_level(index: int) -> void:
 	_load_level(clampi(index, 0, levels.size() - 1))
 	started = true
+	_sync_mouse_mode()
 	hud.hide_title()
 
 func _toggle_pause() -> void:
 	if not started or completed:
 		return
 	paused = not paused
+	_sync_mouse_mode()
 	hud.show_pause(paused)
+
+
+func _sync_mouse_mode() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if started and not paused and not completed and not capture_mode else Input.MOUSE_MODE_VISIBLE
+
+
+func _on_focus_exited() -> void:
+	if started and not paused and not completed and not capture_mode:
+		_toggle_pause()
+
+
+func _exit_tree() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
 
 func _hint() -> void:
 	var hints: Array = level.get("hints", [])
@@ -368,6 +407,13 @@ func _load_level(index: int) -> void:
 	distance_walked = 0.0
 	hud.setup_level(index, levels.size(), level.title, level.subtitle, level.lesson, collected.size())
 	_refresh_view()
+	_reset_camera()
+
+
+func _reset_camera() -> void:
+	world.update_slice(position4, angle, active_axis, rotating, collected, clock, RADIUS)
+	var toward_goal: Vector4 = level.goal - position4
+	world.reset_camera(position4, angle, Vector2(toward_goal.x, toward_goal.z * cos(angle) + toward_goal.w * sin(angle)))
 
 
 func _capture() -> void:

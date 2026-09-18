@@ -59,6 +59,9 @@ var _toast_panel: PanelContainer
 var _toast_label: Label
 var _level_buttons: Array[Button] = []
 var _level_nav: HBoxContainer
+var _pause_level_buttons: Array[Button] = []
+var _pause_chapters: VBoxContainer
+var _pause_level_nav: HBoxContainer
 var _custom_level: bool = false
 var _toast_time: float = 0.0
 var _final_level: bool = false
@@ -213,15 +216,16 @@ func _build_footer() -> void:
 	controls_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var controls := HBoxContainer.new()
 	controls_center.add_child(controls)
-	controls.add_theme_constant_override("separation", 23)
+	controls.add_theme_constant_override("separation", 18)
 	controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_add_key_group(controls, "MOUSE", "look")
 	_add_key_group(controls, "W A S D", "move")
 	_add_key_group(controls, "SPACE", "jump")
 	_add_key_group(controls, "Q − / E +", "hold to fold")
 	_add_key_group(controls, "R", "restart")
 	_add_key_group(controls, "H", "hint")
 	_add_key_group(controls, "M", "sound")
-	_add_key_group(controls, "ESC", "pause")
+	_add_key_group(controls, "ESC", "pause / cursor")
 
 func _add_key_group(parent: HBoxContainer, keys: String, action: String) -> void:
 	var group := HBoxContainer.new()
@@ -337,7 +341,8 @@ func _build_title() -> void:
 	start.pressed.connect(func() -> void: start_requested.emit())
 	row.add_child(start)
 	_gap(box, 13)
-	_center_label(box, "W A S D  move     ·     SPACE  jump     ·     Hold Q − / E + to fold", 11, MUTED)
+	_center_label(box, "MOUSE  look     ·     W A S D  move with camera     ·     SPACE  jump", 11, MUTED)
+	_center_label(box, "Hold Q − / E + to fold     ·     ESC  pause / free cursor", 11, MUTED)
 	_center_label(box, "THREE SMALL GARDENS  /  ONE EXTRA DIMENSION", 9, Color(0.55, 0.68, 0.62, 0.8))
 	var footnote := _label("An original spatial puzzle", 10, MUTED)
 	_title_overlay.add_child(footnote)
@@ -350,7 +355,7 @@ func _build_title() -> void:
 
 func _build_pause() -> void:
 	_pause_overlay = _overlay()
-	var box := _overlay_box(_pause_overlay, 360, 300)
+	var box := _overlay_box(_pause_overlay, 400, 400)
 	_center_label(box, "TAKE A BREATH", 11, TEAL)
 	_center_label(box, "A quiet moment", 35)
 	_center_label(box, "The garden will be here.", 14, MUTED)
@@ -361,7 +366,16 @@ func _build_pause() -> void:
 	var restart := _button("Begin this chapter again")
 	restart.pressed.connect(func() -> void: restart_requested.emit())
 	box.add_child(restart)
-	_center_label(box, "ESC to return", 11, MUTED)
+	_pause_chapters = VBoxContainer.new()
+	_pause_chapters.add_theme_constant_override("separation", 7)
+	box.add_child(_pause_chapters)
+	_center_label(_pause_chapters, "CHOOSE A GARDEN", 10, TEAL)
+	_pause_level_nav = HBoxContainer.new()
+	_pause_level_nav.alignment = BoxContainer.ALIGNMENT_CENTER
+	_pause_level_nav.add_theme_constant_override("separation", 7)
+	_pause_chapters.add_child(_pause_level_nav)
+	_pause_chapters.hide()
+	_center_label(box, "Cursor is free. ESC to return to mouse look.", 11, MUTED)
 	_pause_overlay.hide()
 
 func _build_completion() -> void:
@@ -388,6 +402,21 @@ func _on_next_pressed() -> void:
 
 func set_custom_level(value: bool) -> void:
 	_custom_level = value
+	if _built:
+		_update_navigation_visibility()
+
+func _chapter_button(index: int) -> Button:
+	var button := _button("%02d" % (index + 1))
+	button.custom_minimum_size = Vector2(43, 32)
+	button.add_theme_font_size_override("font_size", 11)
+	button.add_theme_stylebox_override("normal", _style(Color(0.05, 0.14, 0.14, 0.68), Color(0.5, 0.72, 0.65, 0.18), 6))
+	button.pressed.connect(func() -> void: level_requested.emit(index))
+	return button
+
+func _update_navigation_visibility() -> void:
+	var show_chapters := not _custom_level and _level_buttons.size() > 1
+	_level_nav.visible = show_chapters
+	_pause_chapters.visible = show_chapters
 
 func _setup_navigation(total: int) -> void:
 	if _level_buttons.size() != total:
@@ -395,18 +424,21 @@ func _setup_navigation(total: int) -> void:
 			_level_nav.remove_child(button)
 			button.queue_free()
 		_level_buttons.clear()
+		for button: Button in _pause_level_buttons:
+			_pause_level_nav.remove_child(button)
+			button.queue_free()
+		_pause_level_buttons.clear()
 		for index: int in range(total):
-			var button := _button("%02d" % (index + 1))
-			button.custom_minimum_size = Vector2(43, 32)
-			button.add_theme_font_size_override("font_size", 11)
-			button.add_theme_stylebox_override("normal", _style(Color(0.05, 0.14, 0.14, 0.68), Color(0.5, 0.72, 0.65, 0.18), 6))
-			button.pressed.connect(func() -> void: level_requested.emit(index))
+			var button := _chapter_button(index)
 			_level_nav.add_child(button)
 			_level_buttons.append(button)
+			var pause_button := _chapter_button(index)
+			_pause_level_nav.add_child(pause_button)
+			_pause_level_buttons.append(pause_button)
 	var nav_width := total * 43.0 + maxi(total - 1, 0) * 7.0
 	_level_nav.offset_left = -nav_width / 2.0
 	_level_nav.offset_right = nav_width / 2.0
-	_level_nav.visible = total > 1
+	_update_navigation_visibility()
 
 func setup_level(index: int, total: int, title: String, subtitle: String, lesson: String, seed_count: int) -> void:
 	_build()
@@ -422,6 +454,7 @@ func setup_level(index: int, total: int, title: String, subtitle: String, lesson
 	for button_index: int in range(_level_buttons.size()):
 		_level_buttons[button_index].visible = button_index < total
 		_level_buttons[button_index].add_theme_color_override("font_color", GOLD if button_index == index else MUTED)
+		_pause_level_buttons[button_index].add_theme_color_override("font_color", GOLD if button_index == index else MUTED)
 	_completion_overlay.hide()
 	_pause_overlay.hide()
 	_toast_panel.hide()

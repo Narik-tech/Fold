@@ -5,6 +5,16 @@ extends Node3D
 
 const Geometry = preload("res://scripts/slice_geometry.gd")
 const Edges = preload("res://scripts/edge_geometry.gd")
+const CAMERA_DISTANCE := 4.8
+const CAMERA_HEIGHT := 2.4
+const CAMERA_FOCUS_HEIGHT := 1.0
+const CAMERA_FOLLOW_SPEED := 9.0
+const CAMERA_PADDING := 0.18
+const CAMERA_MIN_PITCH := deg_to_rad(-15.0)
+const CAMERA_MAX_PITCH := deg_to_rad(70.0)
+
+## Radians per screen pixel; independent of the viewport's stretch scale.
+@export_range(0.0005, 0.01, 0.0001) var mouse_sensitivity := 0.003
 
 @onready var level_root: Node3D = $LevelGeometry
 
@@ -15,6 +25,12 @@ var shape_solids: Array[Dictionary] = []
 var _shape_slice_key := Vector4(INF, INF, INF, INF)
 var seed_visuals: Array[Node3D] = []
 var camera: Camera3D
+var _camera_boxes: Array[AABB] = []
+var _camera_shapes: Array[TriangleMesh] = []
+var _camera_yaw := 0.0
+var _camera_pitch := atan2(CAMERA_HEIGHT, CAMERA_DISTANCE)
+var _camera_arm_length := Vector2(CAMERA_DISTANCE, CAMERA_HEIGHT).length()
+var _camera_ready := false
 var _level: Dictionary = {}
 var decorations: Array[Dictionary] = []
 var materials: Dictionary = {}
@@ -42,6 +58,9 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 	box_visuals.clear()
 	shape_visuals.clear()
 	shape_fringes.clear()
+	_camera_shapes.clear()
+	_camera_boxes.clear()
+	_camera_ready = false
 	shape_solids = Edges.compile_shapes(_level.get("shapes", []))
 	_shape_slice_key = Vector4(INF, INF, INF, INF)
 	seed_visuals.clear()
@@ -57,6 +76,7 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 		mesh.material_override = materials.edge
 		level_root.add_child(mesh)
 		shape_visuals.append(mesh)
+		_camera_shapes.append(null)
 		var fringe := MeshInstance3D.new()
 		fringe.material_override = materials.fringe
 		fringe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -83,6 +103,7 @@ func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating:
 	if _level.is_empty():
 		return
 	var visible_player_depth := position4.z * cos(angle) + position4.w * sin(angle)
+	_camera_boxes.clear()
 	_update_shape_slices(position4, angle, rotating, player_radius)
 	for i in range(box_visuals.size()):
 		var box: Dictionary = _level.boxes[i]
@@ -104,6 +125,8 @@ func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating:
 		if section.visible:
 			visual.position = section.center + Vector3(0, 0, visible_player_depth)
 			visual.scale = section.size
+			if not is_fringe:
+				_camera_boxes.append(AABB(visual.position - visual.scale * 0.5, visual.scale))
 	for i in range(seed_visuals.size()):
 		var pos: Vector4 = _level.seeds[i]
 		var hidden := _hidden_distance(pos, position4, angle)
@@ -139,6 +162,7 @@ func _update_shape_slices(position4: Vector4, angle: float,
 		var mesh := Edges.slice_mesh(edges, position4, angle)
 		shape_visuals[index].mesh = mesh
 		shape_visuals[index].visible = mesh.get_surface_count() > 0
+		_camera_shapes[index] = mesh.generate_triangle_mesh() if shape_visuals[index].visible else null
 		shape_fringes[index].visible = false
 		if not rotating:
 			var fringe := Edges.slice_mesh(edges, position4, angle, player_radius, Edges.BOTH_DEPTH_AXES)
@@ -164,6 +188,88 @@ func update_traveler(delta: float, clock: float, position4: Vector4, angle: floa
 	hero_shadow.visible = ground_y > -10.0
 	hero_shadow.position = Vector3(hero.position.x, ground_y + 0.012, hero.position.z)
 	hero_shadow.scale = Vector3.ONE * clampf(1.0 - (position4.y - ground_y) * 0.16, 0.4, 1.0)
+
+
+## Teleports and level changes establish a new heading without flying across the map.
+func reset_camera(position4: Vector4, angle: float, facing: Vector2) -> void:
+	hero.position = _project(position4, angle)
+	hero_body.rotation.y = atan2(facing.x, facing.y) if not facing.is_zero_approx() else PI
+	_camera_yaw = hero_body.rotation.y
+	_camera_pitch = atan2(CAMERA_HEIGHT, CAMERA_DISTANCE)
+	_camera_ready = false
+	update_camera(0.0)
+
+
+func orbit_camera(relative: Vector2) -> void:
+	_camera_yaw = wrapf(_camera_yaw - relative.x * mouse_sensitivity, -PI, PI)
+	_camera_pitch = clampf(_camera_pitch + relative.y * mouse_sensitivity, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+	# Apply mouse look before the next physics tick reads the camera basis.
+	update_camera(0.0)
+
+
+func update_camera(delta: float) -> void:
+	var weight := 1.0 - exp(-CAMERA_FOLLOW_SPEED * delta)
+	var forward := Vector3(sin(_camera_yaw), 0.0, cos(_camera_yaw))
+	var focus := hero.position + Vector3.UP * CAMERA_FOCUS_HEIGHT
+	var direction := -forward * cos(_camera_pitch) + Vector3.UP * sin(_camera_pitch)
+	var desired := focus + direction * Vector2(CAMERA_DISTANCE, CAMERA_HEIGHT).length()
+	# The game collides in 4D, so there are no physics bodies for a SpringArm3D.
+	# Probe the actual opaque slice, including the open frames' triangle surfaces.
+	var clear_distance := focus.distance_to(_clip_camera(focus, desired))
+	if not _camera_ready or clear_distance < _camera_arm_length:
+		_camera_arm_length = clear_distance
+	else:
+		_camera_arm_length = lerpf(_camera_arm_length, clear_distance, weight)
+	# Anchor translation and orbit directly to the player. Damping these would
+	# skew the camera heading as we strafe and feed that drift back into movement.
+	camera.position = focus + direction * _camera_arm_length
+	camera.look_at(focus)
+	_camera_ready = true
+
+
+func _clip_camera(focus: Vector3, proposed: Vector3) -> Vector3:
+	var offset := proposed - focus
+	var distance := offset.length()
+	if distance < 0.001:
+		return proposed
+	var direction := offset / distance
+	var right := direction.cross(Vector3.UP).normalized() * CAMERA_PADDING
+	var up := right.normalized().cross(direction) * CAMERA_PADDING
+	var fraction := 1.0
+	# A small bundle protects the near plane as well as the center of the lens.
+	for margin: Vector3 in [Vector3.ZERO, right + up, right - up, -right + up, -right - up]:
+		var begin := focus + margin
+		var end := proposed + margin
+		for bounds in _camera_boxes:
+			fraction = minf(fraction, _box_segment_fraction(bounds, begin, end))
+		for triangles in _camera_shapes:
+			if triangles == null:
+				continue
+			var hit := triangles.intersect_segment(begin, end)
+			if not hit.is_empty():
+				fraction = minf(fraction, begin.distance_to(hit.position) / distance)
+	if fraction < 1.0:
+		return focus + direction * maxf(0.05, distance * fraction - CAMERA_PADDING)
+	return proposed
+
+
+func _box_segment_fraction(bounds: AABB, begin: Vector3, end: Vector3) -> float:
+	var direction := end - begin
+	var enter := 0.0
+	var leave := 1.0
+	for axis in range(3):
+		if absf(direction[axis]) < 0.00001:
+			if begin[axis] < bounds.position[axis] or begin[axis] > bounds.end[axis]:
+				return 1.0
+			continue
+		var first := (bounds.position[axis] - begin[axis]) / direction[axis]
+		var last := (bounds.end[axis] - begin[axis]) / direction[axis]
+		enter = maxf(enter, minf(first, last))
+		leave = minf(leave, maxf(first, last))
+		if enter > leave:
+			return 1.0
+	return enter
+
 
 func update_ambience(delta: float, clock: float) -> void:
 	for i in range(motes.size()):
@@ -247,11 +353,11 @@ func _setup_environment() -> void:
 	fill.light_energy = 0.3
 	add_child(fill)
 	camera = Camera3D.new()
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 19.0
-	camera.position = Vector3(10, 20, 21)
+	camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+	camera.fov = 65.0
+	camera.near = 0.05
+	camera.far = 150.0
 	add_child(camera)
-	camera.look_at(Vector3(0, 0.1, 0))
 	camera.current = true
 	# An understated circular plinth grounds the floating architecture.
 	var plinth := MeshInstance3D.new()
