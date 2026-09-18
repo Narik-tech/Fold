@@ -98,7 +98,8 @@ func _test_scaling_and_validation() -> void:
 		for index in range(actual.size()):
 			scaled = scaled and actual[index].is_equal_approx(shape.center + expected[index] * shape.scale)
 		_expect(scaled and actual.size() == expected.size(), "%s translates and scales in all four axes" % kind)
-	_expect(shape.to_dictionary().size() == 4, "Snapshots contain only the four authoring fields")
+	_expect(shape.to_dictionary().size() == 5 and shape.to_dictionary().representation == "edges",
+		"Snapshots include the representation and default legacy shapes to edge frames")
 	_expect(shape.validation_errors().is_empty(), "Positive finite shape dimensions validate")
 	shape.scale = -1
 	_expect(not shape.validation_errors().is_empty(), "Negative scale is rejected")

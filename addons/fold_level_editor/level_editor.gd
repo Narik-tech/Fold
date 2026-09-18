@@ -27,9 +27,12 @@ var _size_fields: Array[SpinBox] = []
 var _size_group: VBoxContainer
 var _shape_group: VBoxContainer
 var _shape_kind: OptionButton
+var _new_shape_representation: OptionButton
+var _shape_representation: OptionButton
 var _shape_scale: SpinBox
 var _edge_thickness: SpinBox
 var _shape_details: Label
+var _shape_help: Label
 var _samples_menu: MenuButton
 var _metadata_fields: Dictionary = {}
 var _open_dialog: FileDialog
@@ -94,9 +97,11 @@ func _build_toolbar() -> void:
 	_button(toolbar, "Open…", func(): _guard_changes(_show_open), "Open a FoldLevel .tres resource; editing uses an independent copy")
 	_samples_menu = MenuButton.new()
 	_samples_menu.text = "4D Samples"
-	_samples_menu.tooltip_text = "Open a simple playable garden for each regular 4D shape"
+	_samples_menu.tooltip_text = "Open an edge frame or solid faces garden for each regular 4D shape"
 	for kind: String in Polytopes.TYPES:
-		_samples_menu.get_popup().add_item(Document.SHAPE_LABELS[kind])
+		_samples_menu.get_popup().add_item(Document.SHAPE_LABELS[kind] + " · edge frame")
+	for kind: String in Polytopes.TYPES:
+		_samples_menu.get_popup().add_item(Document.SHAPE_LABELS[kind] + " · solid faces")
 	_samples_menu.get_popup().id_pressed.connect(_open_sample)
 	toolbar.add_child(_samples_menu)
 	_button(toolbar, "Save", _save, "Save validated level (Ctrl+S)")
@@ -130,14 +135,15 @@ func _build_workspace() -> void:
 	objects_column.add_child(add_grid)
 	for pair in [["+ Floor", "stone"], ["+ Wall", "wall"], ["+ Bridge", "bridge"], ["+ Step", "step"], ["+ Echo", "echo"]]:
 		_button(add_grid, pair[0], _add_object.bind(pair[1]))
-	_label(objects_column, "4D EDGE FRAMES")
+	_label(objects_column, "4D SHAPES")
 	_shape_kind = OptionButton.new()
 	for kind: String in Polytopes.TYPES:
 		_shape_kind.add_item(Document.SHAPE_LABELS[kind])
 	_shape_kind.select(Polytopes.TYPES.find("tesseract"))
-	_shape_kind.tooltip_text = "Six regular convex 4D polytopes; only their edges are solid"
+	_shape_kind.tooltip_text = "Six regular convex 4D polytopes"
 	objects_column.add_child(_shape_kind)
-	_button(objects_column, "+ 4D Shape", _add_selected_shape, "Add one scalable edge frame; move, duplicate, and delete it as a single object")
+	_new_shape_representation = _representation_picker(objects_column)
+	_button(objects_column, "+ 4D Shape", _add_selected_shape, "Add the chosen shape and representation as a single object")
 	_duplicate_button = _button(objects_column, "Duplicate", _duplicate_selected)
 	_delete_button = _button(objects_column, "Delete", _delete_selected, "Start and Goal are required and cannot be deleted")
 	var content := HSplitContainer.new()
@@ -218,6 +224,9 @@ func _build_object_inspector(parent: Node) -> void:
 		_size_fields.append(field)
 	_shape_group = VBoxContainer.new()
 	column.add_child(_shape_group)
+	_label(_shape_group, "Representation")
+	_shape_representation = _representation_picker(_shape_group)
+	_shape_representation.item_selected.connect(_shape_representation_changed)
 	_label(_shape_group, "Scale · center to vertex")
 	_shape_scale = _spin(_shape_group, 0.001, 10000.0, 0.001)
 	_shape_scale.tooltip_text = "Uniform size in all four axes; vertices lie this far from the center"
@@ -230,10 +239,19 @@ func _build_object_inspector(parent: Node) -> void:
 	_edge_thickness.get_line_edit().focus_exited.connect(document.break_merge)
 	_shape_details = _label(_shape_group, "")
 	_shape_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var frame_help := _label(_shape_group, "Only edges are solid. Faces and cells are open for walking and folding through. Select any projected edge or the center handle to move the whole frame.")
-	frame_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_shape_help = _label(_shape_group, "")
+	_shape_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var help := _label(column, "Y is vertical in both views.\nStart / Goal: Y is feet height.\nEcho: Y is floating center.\nBox top = center Y + size Y ÷ 2.\n\nDimmed objects lie outside the chosen hidden-axis slice. Switch X/Z ↔ X/W to place them.\n\nGeometry edits clear any recorded solution route. Playtest to verify the puzzle.")
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
+func _representation_picker(parent: Node) -> OptionButton:
+	var picker := OptionButton.new()
+	picker.add_item("Edge frame")
+	picker.add_item("Solid faces")
+	picker.tooltip_text = "Edge frame: open interior with solid beams. Solid faces: opaque boundary around a filled, collidable interior."
+	parent.add_child(picker)
+	return picker
 
 
 func _build_metadata_inspector(parent: Node) -> void:
@@ -350,10 +368,14 @@ func _refresh_properties() -> void:
 	_shape_group.visible = document.is_shape(selection)
 	if document.is_shape(selection):
 		var shape: FoldShape = document.shape_at(selection)
+		var solid := shape.representation == "solid"
+		_shape_representation.select(1 if solid else 0)
 		_shape_scale.set_value_no_signal(shape.scale)
 		_edge_thickness.set_value_no_signal(shape.edge_thickness)
+		_edge_thickness.editable = not solid
 		var topology: Dictionary = Polytopes.topology(shape.kind)
-		_shape_details.text = "%d vertices · %d solid edges" % [topology.vertices.size(), topology.edges.size()]
+		_shape_details.text = "%d vertices · filled convex solid" % topology.vertices.size() if solid else "%d vertices · %d solid edges" % [topology.vertices.size(), topology.edges.size()]
+		_shape_help.text = "Solid faces enclose a filled interior. Folding shows an opaque, collidable cross-section. Select the filled projection or center handle to move the whole solid. Edge thickness does not apply." if solid else "Only edges are solid. Faces and cells are open for walking and folding through. Select any projected edge or the center handle to move the whole frame."
 	_delete_button.disabled = selection < 2
 	_duplicate_button.disabled = selection < 2
 	_refreshing = false
@@ -399,6 +421,12 @@ func _edge_thickness_changed(value: float) -> void:
 		document.set_edge_thickness(selection, value)
 
 
+func _shape_representation_changed(index: int) -> void:
+	if not _refreshing:
+		document.set_shape_representation(selection, "solid" if index == 1 else "edges")
+		_refresh_properties()
+
+
 func _metadata_changed(property: String) -> void:
 	if _refreshing:
 		return
@@ -424,7 +452,7 @@ func _add_object(kind: String) -> void:
 
 
 func _add_selected_shape() -> void:
-	_select_object(document.add_shape(Polytopes.TYPES[_shape_kind.selected]))
+	_select_object(document.add_shape(Polytopes.TYPES[_shape_kind.selected], "solid" if _new_shape_representation.selected == 1 else "edges"))
 
 
 func _open_sample(index: int) -> void:
@@ -432,8 +460,9 @@ func _open_sample(index: int) -> void:
 
 
 func _load_sample(index: int) -> void:
-	var kind: String = Polytopes.TYPES[index]
-	var path := "res://levels/samples/%s.tres" % kind.replace("-", "_")
+	var kind: String = Polytopes.TYPES[index % Polytopes.TYPES.size()]
+	var prefix := "solid_" if index >= Polytopes.TYPES.size() else ""
+	var path := "res://levels/samples/%s%s.tres" % [prefix, kind.replace("-", "_")]
 	_open_level(path)
 	if document.path == path and not document.level.shapes.is_empty():
 		_select_object(2 + document.level.boxes.size())

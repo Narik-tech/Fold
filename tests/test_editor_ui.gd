@@ -47,7 +47,7 @@ func _run() -> void:
 	quit(0 if failures == 0 else 1)
 
 func _test_frames(panel: Control) -> void:
-	_expect(panel._shape_kind.item_count == 6 and panel._samples_menu.get_popup().item_count == 6, "All six regular 4D shapes and sample gardens are discoverable")
+	_expect(panel._shape_kind.item_count == 6 and panel._samples_menu.get_popup().item_count == 12, "All six regular 4D shapes and both sample representations are discoverable")
 	panel._shape_kind.select(EditorPanel.Polytopes.TYPES.find("120-cell"))
 	panel._add_selected_shape()
 	var frame: int = panel.selection
@@ -61,6 +61,18 @@ func _test_frames(panel: Control) -> void:
 	_expect(not is_equal_approx(panel.document.shape_at(frame).center.y, 2.75), "Undo restores frame inspector edits")
 	panel._redo()
 	_expect(is_equal_approx(panel._position_fields[1].value, 2.75), "Redo refreshes the frame inspector")
+	panel._shape_representation.select(1)
+	panel._shape_representation.item_selected.emit(1)
+	_expect(panel.document.shape_at(frame).representation == "solid" and not panel._edge_thickness.editable, "The representation selector converts a frame to solid faces and disables edge thickness")
+	_expect(panel._shape_help.text.contains("filled interior") and panel._selected_label.text.begins_with("Solid "), "The solid inspector explains its filled interior and identifies the representation")
+	panel._undo()
+	_expect(panel.document.shape_at(frame).representation == "edges" and panel._edge_thickness.editable and panel._shape_representation.selected == 0, "Undo restores edge mode and its inspector controls")
+	panel._redo()
+	_expect(panel.document.shape_at(frame).representation == "solid" and panel._shape_representation.selected == 1, "Redo restores solid mode in the inspector")
+	panel._new_shape_representation.select(1)
+	panel._add_selected_shape()
+	_expect(panel.document.shape_at(panel.selection).representation == "solid", "The add controls create a solid directly")
+	panel._new_shape_representation.select(0)
 	var previous: Dictionary = panel.document.level.to_dictionary()
 	panel._open_sample(0)
 	_expect(panel._discard_dialog.visible and panel.document.level.to_dictionary() == previous, "Opening a sample protects unsaved geometry")
@@ -69,7 +81,9 @@ func _test_frames(panel: Control) -> void:
 	for index in EditorPanel.Polytopes.TYPES.size():
 		panel._load_sample(index)
 		var kind: String = EditorPanel.Polytopes.TYPES[index]
-		_expect(panel.document.is_shape(panel.selection) and panel.document.shape_at(panel.selection).kind == kind and not panel.document.is_dirty(), "%s sample opens with its whole frame selected" % kind)
+		_expect(panel.document.is_shape(panel.selection) and panel.document.shape_at(panel.selection).kind == kind and panel.document.shape_at(panel.selection).representation == "edges" and not panel.document.is_dirty(), "%s sample opens with its whole frame selected" % kind)
+		panel._load_sample(index + EditorPanel.Polytopes.TYPES.size())
+		_expect(panel.document.is_shape(panel.selection) and panel.document.shape_at(panel.selection).kind == kind and panel.document.shape_at(panel.selection).representation == "solid" and not panel.document.is_dirty(), "%s solid sample opens with its complete solid selected" % kind)
 
 func _test_playtest(panel: Control) -> void:
 	# Optional desktop integration: actually opens and closes a game window.

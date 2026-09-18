@@ -26,6 +26,13 @@ func _run() -> void:
 	await _capture(panel, "level-editor-120-cell")
 	root.size = Vector2i(900, 680)
 	await _capture(panel, "level-editor-120-cell-compact")
+	root.size = Vector2i(1280, 800)
+	panel._load_sample(10)
+	projection.select(0)
+	projection.item_selected.emit(0)
+	await _capture(panel, "level-editor-solid-120-cell")
+	root.size = Vector2i(900, 680)
+	await _capture(panel, "level-editor-solid-120-cell-compact")
 	panel.queue_free()
 	await process_frame
 	print("PASS: level editor panel rendered at desktop and compact sizes.")

@@ -35,6 +35,7 @@ func _run() -> void:
 	_test_fold_tracking()
 	_test_camera_relative_keyboard()
 	_test_held_input_steering()
+	_test_folding_collision()
 	_test_mouse_input_lifecycle()
 	_test_pause_and_respawn()
 	_test_wall_clearance()
@@ -234,19 +235,63 @@ func _test_held_input_steering() -> void:
 		"Turning the mouse changes held W movement on the very next physics frame")
 	# Camera motion during a fold must also affect keys that remain held throughout it.
 	_key_event(KEY_Q, true)
+	var walking_distance := 0.0
+	var follows_slice := true
 	for unused in range(30):
+		before = game.position4
 		game._physics_process(DT)
 		game._process(DT)
+		change = game.position4 - before
+		walking_distance += Vector3(change.x, change.z, change.w).length()
+		var projected := Vector2(change.x, change.z * cos(game.angle) + change.w * sin(game.angle))
+		follows_slice = follows_slice and projected.normalized().dot(forward) > 0.999
+	_expect(follows_slice and absf(walking_distance - game.SPEED * DT * 30.0) < 0.001,
+		"Held W keeps full speed and camera direction throughout continuous slice rotation")
 	game.world.orbit_camera(Vector2(-330.0, 20.0))
 	forward = _camera_forward()
+	before = game.position4
+	game._physics_process(DT)
+	change = game.position4 - before
+	var projected := Vector2(change.x, change.z * cos(game.angle) + change.w * sin(game.angle))
+	_expect(game.rotating and projected.normalized().dot(forward) > 0.999
+		and absf(projected.length() - game.SPEED * DT) < 0.001,
+		"Held W responds to a new mouse heading on the next frame while Q stays held")
 	_key_event(KEY_Q, false)
 	before = game.position4
 	game._physics_process(DT)
 	_key_event(KEY_W, false)
 	change = game.position4 - before
-	var projected := Vector2(change.x, change.z * cos(game.angle) + change.w * sin(game.angle))
-	_expect(projected.normalized().dot(forward) > 0.999,
-		"Held W uses the newest mouse heading as soon as folding ends")
+	projected = Vector2(change.x, change.z * cos(game.angle) + change.w * sin(game.angle))
+	_expect(not game.rotating and projected.normalized().dot(forward) > 0.999
+		and absf(projected.length() - game.SPEED * DT) < 0.001,
+		"Releasing Q preserves the current camera-relative walking direction and speed")
+	game._physics_process(DT)
+
+
+func _test_folding_collision() -> void:
+	var fixture := _fixture()
+	var wall := FoldBox.new()
+	wall.center = Vector4(2.0, 2.0, 0.0, 0.0)
+	wall.size = Vector4(0.4, 4.0, 80.0, 80.0)
+	wall.kind = "wall"
+	fixture.boxes.append(wall)
+	_expect(game.load_custom_level(fixture), "Concurrent fold collision fixture loads")
+	game.world.orbit_camera(Vector2(-_camera_forward().angle() / game.world.mouse_sensitivity, 0.0))
+	_key_event(KEY_W, true)
+	_key_event(KEY_E, true)
+	_key_event(KEY_SPACE, true)
+	_key_event(KEY_SPACE, false)
+	var crossed_wall := false
+	for unused in range(60):
+		game._physics_process(DT)
+		game._process(DT)
+		crossed_wall = crossed_wall or game.position4.x > 1.8 - game.RADIUS + 0.001
+	_expect(not crossed_wall and game.position4.x > 1.5 and game.rotating,
+		"Walking and jumping during a held fold still collide with the wall")
+	_expect(game.grounded and is_zero_approx(game.position4.y) and is_zero_approx(game.vertical_speed),
+		"Walking into a wall while rotating preserves gravity and landing")
+	_key_event(KEY_W, false)
+	_key_event(KEY_E, false)
 	game._physics_process(DT)
 
 

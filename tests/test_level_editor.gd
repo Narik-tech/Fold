@@ -59,6 +59,7 @@ func _run() -> void:
 	independent.undo()
 	_expect(independent.object_position(2) == old_center, "History restores the independent box copy")
 	_test_shapes()
+	_test_solid_shapes()
 	_test_echo_metadata()
 	await _test_canvas()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
@@ -105,6 +106,36 @@ func _test_shapes() -> void:
 	_expect(source.shapes[0].center == position and independent.level.shapes[-1].center == position, "Editing aliased frame resources isolates the source and every list entry")
 	var previous_count: int = independent.object_count()
 	_expect(independent.add_shape("unsupported") == -1 and independent.object_count() == previous_count, "An unknown frame kind does not create an invalid object")
+
+func _test_solid_shapes() -> void:
+	var document := Document.new()
+	for kind: String in Document.Polytopes.TYPES:
+		var index: int = document.add_shape(kind, "solid")
+		_expect(document.shape_at(index).representation == "solid" and document.object_name(index).begins_with("Solid "), "Adding solid %s keeps its representation and visible label" % kind)
+	var solid: int = 2 + document.level.boxes.size()
+	document.level.solution = [document.level.start, document.level.goal]
+	var saved_route := document.level.solution.duplicate()
+	document.set_shape_representation(solid, "edges")
+	_expect(document.shape_at(solid).representation == "edges" and document.level.solution.is_empty(), "Changing representation invalidates the recorded route")
+	document.undo()
+	_expect(document.shape_at(solid).representation == "solid" and document.level.solution == saved_route, "Undo restores the solid and its recorded route")
+	document.redo()
+	_expect(document.shape_at(solid).representation == "edges", "Redo restores an edge frame")
+	document.set_shape_representation(solid, "solid")
+	var duplicate: int = document.duplicate_object(solid)
+	document.set_shape_representation(duplicate, "edges")
+	_expect(document.shape_at(solid).representation == "solid" and document.shape_at(duplicate).representation == "edges", "A duplicated solid has an independent representation")
+	_expect(document.save_level(TEST_PATH) == OK, "All six solids save alongside an edge frame")
+	var reopened := Document.new()
+	_expect(reopened.open_level(TEST_PATH) == OK and reopened.level.to_dictionary() == document.level.to_dictionary(), "Mixed solid and frame representations survive a save and reopen")
+	var before: Dictionary = document.level.to_dictionary()
+	document.set_shape_representation(solid, "unsupported")
+	_expect(document.level.to_dictionary() == before and document.add_shape("tesseract", "unsupported") == -1, "Unsupported representations cannot be authored")
+	document.shape_at(solid).representation = "unsupported"
+	_expect(document.save_level(TEST_PATH) == ERR_INVALID_DATA, "An invalid representation cannot overwrite the saved level")
+	var legacy := Document.new()
+	_expect(legacy.open_level("res://levels/samples/tesseract.tres") == OK and legacy.level.shapes[0].representation == "edges", "Existing shape resources default to edge frames")
+
 
 func _test_echo_metadata() -> void:
 	var document := Document.new()
@@ -194,6 +225,20 @@ func _test_canvas() -> void:
 	_expect(document.object_position(frame).is_equal_approx(Vector4(9.0, 1.5, 0.0, 0.0)), "Dragging a whole frame is one undo operation")
 	var clipped: PackedFloat32Array = canvas._slice_segment(Vector4(0, 0, 0, -1), Vector4(0, 0, 0, 1), 0.2)
 	_expect(clipped.size() == 2 and is_equal_approx(clipped[0], 0.45) and is_equal_approx(clipped[1], 0.55), "Frame slice highlighting clips to only the hidden-axis edge interval")
+	document.set_shape_representation(frame, "solid")
+	_expect(canvas._hit_test(interior) == frame, "A solid's projected interior selects the complete shape")
+	_expect(canvas._shape_polygon(frame, true).size() == 4, "A tesseract solid has a filled square projection in its central slice")
+	canvas.slice_position = 3.0
+	_expect(canvas._shape_polygon(frame, true).is_empty(), "A solid outside the slice has no highlighted filled projection")
+	_expect(canvas._hit_test(interior) == frame, "A dimmed solid remains selectable for repositioning")
+	canvas.slice_position = 0.0
+	canvas.vertical_axis = 3
+	_expect(canvas._shape_polygon(frame, true).size() == 4, "Solid slice projection also works in XW view")
+	canvas.vertical_axis = 2
+	_drag(canvas, interior, interior + Vector2(36.0, -36.0))
+	_expect(document.object_position(frame).is_equal_approx(Vector4(10.0, 1.5, 1.0, 0.0)), "Dragging a solid interior moves its whole shape")
+	document.undo()
+	_expect(document.object_position(frame).is_equal_approx(Vector4(9.0, 1.5, 0.0, 0.0)), "A solid interior drag is one undo operation")
 	canvas.queue_free()
 	await process_frame
 

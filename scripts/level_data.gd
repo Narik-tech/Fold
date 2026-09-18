@@ -9,6 +9,7 @@ const CAMPAIGN_PATHS: Array[String] = [
 	"res://levels/02_the_missing_span.tres",
 	"res://levels/03_two_turns_from_home.tres",
 	"res://levels/04_the_fourfold_labyrinth.tres",
+	"res://levels/05_the_folded_ascent.tres",
 ]
 
 

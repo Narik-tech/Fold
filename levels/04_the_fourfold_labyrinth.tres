@@ -1,221 +1,220 @@
-[gd_resource type="Resource" script_class="FoldLevel" load_steps=39 format=3]
+[gd_resource type="Resource" script_class="FoldLevel" format=3 uid="uid://dpoqqb4ebm1t1"]
 
-[ext_resource type="Script" path="res://levels/level_definition.gd" id="1_level"]
-[ext_resource type="Script" path="res://levels/box_definition.gd" id="2_box"]
+[ext_resource type="Script" uid="uid://cuovfw6cigeoa" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" uid="uid://6lxak7sowd5s" path="res://levels/box_definition.gd" id="2_box"]
+[ext_resource type="Script" uid="uid://bu8syshd4pj6v" path="res://levels/shape_definition.gd" id="3_3s0hy"]
 
-[sub_resource type="Resource" id="Foundation"]
+[sub_resource type="Resource" id="Resource_53uth"]
 script = ExtResource("2_box")
-center = Vector4(0.0, -0.5, 0.0, 2.5)
-size = Vector4(15.5, 1.0, 15.5, 10.5)
-kind = "stone"
+center = Vector4(0, -0.5, 0, 2.5)
+size = Vector4(15.5, 1, 15.5, 10.5)
 
-[sub_resource type="Resource" id="Wall_A00_A10"]
+[sub_resource type="Resource" id="Resource_46kgw"]
 script = ExtResource("2_box")
-center = Vector4(-2.5, 1.4, -5.0, 0.0)
+center = Vector4(-2.5, 1.4, -5, 0)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_A00_B00"]
+[sub_resource type="Resource" id="Resource_wvsww"]
 script = ExtResource("2_box")
-center = Vector4(-5.0, 1.4, -5.0, 2.5)
+center = Vector4(-5, 1.4, -5, 2.5)
 size = Vector4(5.45, 2.8, 5.45, 0.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_A01_A02"]
+[sub_resource type="Resource" id="Resource_wjl2v"]
 script = ExtResource("2_box")
-center = Vector4(-5.0, 1.4, 2.5, 0.0)
+center = Vector4(-5, 1.4, 2.5, 0)
 size = Vector4(5.45, 2.8, 0.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_A10_B10"]
+[sub_resource type="Resource" id="Resource_42ayk"]
 script = ExtResource("2_box")
-center = Vector4(0.0, 1.4, -5.0, 2.5)
+center = Vector4(0, 1.4, -5, 2.5)
 size = Vector4(5.45, 2.8, 5.45, 0.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_A11_A21"]
+[sub_resource type="Resource" id="Resource_q48jp"]
 script = ExtResource("2_box")
-center = Vector4(2.5, 1.4, 0.0, 0.0)
+center = Vector4(2.5, 1.4, 0, 0)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_A11_B11"]
+[sub_resource type="Resource" id="Resource_6v8qb"]
 script = ExtResource("2_box")
-center = Vector4(0.0, 1.4, 0.0, 2.5)
+center = Vector4(0, 1.4, 0, 2.5)
 size = Vector4(5.45, 2.8, 5.45, 0.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_A12_A22"]
+[sub_resource type="Resource" id="Resource_w6g5f"]
 script = ExtResource("2_box")
-center = Vector4(2.5, 1.4, 5.0, 0.0)
+center = Vector4(2.5, 1.4, 5, 0)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_A20_A21"]
+[sub_resource type="Resource" id="Resource_odyap"]
 script = ExtResource("2_box")
-center = Vector4(5.0, 1.4, -2.5, 0.0)
+center = Vector4(5, 1.4, -2.5, 0)
 size = Vector4(5.45, 2.8, 0.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_A21_B21"]
+[sub_resource type="Resource" id="Resource_m0087"]
 script = ExtResource("2_box")
-center = Vector4(5.0, 1.4, 0.0, 2.5)
+center = Vector4(5, 1.4, 0, 2.5)
 size = Vector4(5.45, 2.8, 5.45, 0.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_B00_B10"]
+[sub_resource type="Resource" id="Resource_he6p0"]
 script = ExtResource("2_box")
-center = Vector4(-2.5, 1.4, -5.0, 5.0)
+center = Vector4(-2.5, 1.4, -5, 5)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_B01_B02"]
+[sub_resource type="Resource" id="Resource_f3n34"]
 script = ExtResource("2_box")
-center = Vector4(-5.0, 1.4, 2.5, 5.0)
+center = Vector4(-5, 1.4, 2.5, 5)
 size = Vector4(5.45, 2.8, 0.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_B11_B12"]
+[sub_resource type="Resource" id="Resource_t3r5e"]
 script = ExtResource("2_box")
-center = Vector4(0.0, 1.4, 2.5, 5.0)
+center = Vector4(0, 1.4, 2.5, 5)
 size = Vector4(5.45, 2.8, 0.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_B20_B21"]
+[sub_resource type="Resource" id="Resource_u2dcu"]
 script = ExtResource("2_box")
-center = Vector4(5.0, 1.4, -2.5, 5.0)
+center = Vector4(5, 1.4, -2.5, 5)
 size = Vector4(5.45, 2.8, 0.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="Wall_B21_B22"]
+[sub_resource type="Resource" id="Resource_87wy5"]
 script = ExtResource("2_box")
-center = Vector4(5.0, 1.4, 2.5, 5.0)
+center = Vector4(5, 1.4, 2.5, 5)
 size = Vector4(5.45, 2.8, 0.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="WestBoundary"]
+[sub_resource type="Resource" id="Resource_pycio"]
 script = ExtResource("2_box")
-center = Vector4(-7.5, 1.4, 0.0, 2.5)
+center = Vector4(-7.5, 1.4, 0, 2.5)
 size = Vector4(0.45, 2.8, 15.45, 10.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="NorthBoundary"]
+[sub_resource type="Resource" id="Resource_ehyon"]
 script = ExtResource("2_box")
-center = Vector4(0.0, 1.4, -7.5, 2.5)
+center = Vector4(0, 1.4, -7.5, 2.5)
 size = Vector4(15.45, 2.8, 0.45, 10.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="SouthBoundary"]
+[sub_resource type="Resource" id="Resource_3l155"]
 script = ExtResource("2_box")
-center = Vector4(0.0, 1.4, 7.5, 2.5)
+center = Vector4(0, 1.4, 7.5, 2.5)
 size = Vector4(15.45, 2.8, 0.45, 10.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="NearBoundary"]
+[sub_resource type="Resource" id="Resource_0f5yq"]
 script = ExtResource("2_box")
-center = Vector4(0.0, 1.4, 0.0, -2.5)
+center = Vector4(0.25, 1.4, 0, -2.5)
 size = Vector4(15.45, 2.8, 15.45, 0.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="FarBoundary"]
+[sub_resource type="Resource" id="Resource_p68l2"]
 script = ExtResource("2_box")
-center = Vector4(0.0, 1.4, 0.0, 7.5)
+center = Vector4(0, 1.4, 0, 7.5)
 size = Vector4(15.45, 2.8, 15.45, 0.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="EastBoundary_00"]
+[sub_resource type="Resource" id="Resource_a4e6w"]
 script = ExtResource("2_box")
-center = Vector4(7.5, 1.4, -5.0, 0.0)
+center = Vector4(7.5, 1.4, -5, 0)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="EastBoundary_02"]
+[sub_resource type="Resource" id="Resource_12f5k"]
 script = ExtResource("2_box")
-center = Vector4(7.5, 1.4, 5.0, 0.0)
+center = Vector4(7.5, 1.4, 5, 0)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="EastBoundary_10"]
+[sub_resource type="Resource" id="Resource_wcatj"]
 script = ExtResource("2_box")
-center = Vector4(7.5, 1.4, -5.0, 5.0)
+center = Vector4(7.5, 1.4, -5, 5)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="EastBoundary_11"]
+[sub_resource type="Resource" id="Resource_27wfd"]
 script = ExtResource("2_box")
-center = Vector4(7.5, 1.4, 0.0, 5.0)
+center = Vector4(7.5, 1.4, 0, 5)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="EastBoundary_12"]
+[sub_resource type="Resource" id="Resource_r3b8i"]
 script = ExtResource("2_box")
-center = Vector4(7.5, 1.4, 5.0, 5.0)
+center = Vector4(7.5, 1.4, 5, 5)
 size = Vector4(0.45, 2.8, 5.45, 5.45)
 kind = "wall"
 
-[sub_resource type="Resource" id="StairGarden"]
+[sub_resource type="Resource" id="Resource_n4lys"]
 script = ExtResource("2_box")
-center = Vector4(9.1, -0.5, 0.0, 0.0)
-size = Vector4(6.8, 1.0, 4.2, 4.2)
-kind = "stone"
+center = Vector4(9.1, -0.5, 0, 0)
+size = Vector4(6.8, 1, 4.2, 4.2)
 
-[sub_resource type="Resource" id="Ascent_0"]
+[sub_resource type="Resource" id="Resource_jp81k"]
 script = ExtResource("2_box")
-center = Vector4(7.0, 0.4, 0.0, 0.0)
+center = Vector4(7, 0.4, 0, 0)
 size = Vector4(1.5, 0.8, 2.8, 2.8)
 kind = "step"
 
-[sub_resource type="Resource" id="Ascent_1"]
+[sub_resource type="Resource" id="Resource_uxo3c"]
 script = ExtResource("2_box")
-center = Vector4(8.4, 0.8, 0.0, 0.0)
+center = Vector4(8.4, 0.8, 0, 0)
 size = Vector4(1.5, 1.6, 2.8, 2.8)
 kind = "step"
 
-[sub_resource type="Resource" id="Ascent_2"]
+[sub_resource type="Resource" id="Resource_jp38v"]
 script = ExtResource("2_box")
-center = Vector4(9.8, 1.2000000000000002, 0.0, 0.0)
-size = Vector4(1.5, 2.4000000000000004, 2.8, 2.8)
+center = Vector4(9.8, 1.2, 0, 0)
+size = Vector4(1.5, 2.4, 2.8, 2.8)
 kind = "step"
 
-[sub_resource type="Resource" id="Ascent_3"]
+[sub_resource type="Resource" id="Resource_w3vhu"]
 script = ExtResource("2_box")
-center = Vector4(11.2, 1.6, 0.0, 0.0)
+center = Vector4(11.2, 1.6, 0, 0)
 size = Vector4(1.5, 3.2, 2.8, 2.8)
 kind = "step"
 
-[sub_resource type="Resource" id="SkyFold"]
+[sub_resource type="Resource" id="Resource_s0ol3"]
 script = ExtResource("2_box")
-center = Vector4(11.2, 3.0, 0.0, 2.5)
+center = Vector4(11.2, 3, 0, 2.5)
 size = Vector4(1.5, 0.4, 2.8, 7.8)
 kind = "bridge"
 
-[sub_resource type="Resource" id="SkyEast"]
+[sub_resource type="Resource" id="Resource_omjmn"]
 script = ExtResource("2_box")
-center = Vector4(8.1, 3.0, 0.0, 5.0)
+center = Vector4(8.1, 3, 0, 5)
 size = Vector4(6.2, 0.4, 2.8, 2.8)
 kind = "bridge"
 
-[sub_resource type="Resource" id="SkyNorth"]
+[sub_resource type="Resource" id="Resource_py4vb"]
 script = ExtResource("2_box")
-center = Vector4(5.0, 3.0, -2.5, 5.0)
+center = Vector4(5, 3, -2.5, 5)
 size = Vector4(2.8, 0.4, 7.8, 2.8)
 kind = "bridge"
 
-[sub_resource type="Resource" id="SkyHome"]
+[sub_resource type="Resource" id="Resource_8hyor"]
 script = ExtResource("2_box")
-center = Vector4(1.4, 3.0, -5.0, 5.0)
+center = Vector4(1.4, 3, -5, 5)
 size = Vector4(7.2, 0.4, 2.8, 2.8)
 kind = "bridge"
 
-[sub_resource type="Resource" id="HomeStep"]
+[sub_resource type="Resource" id="Resource_l6dcw"]
 script = ExtResource("2_box")
-center = Vector4(-2.4, 3.6, -5.0, 5.0)
+center = Vector4(-2.4, 3.6, -5, 5)
 size = Vector4(1.5, 0.8, 2.8, 2.8)
 kind = "step"
 
-[sub_resource type="Resource" id="GateTerrace"]
+[sub_resource type="Resource" id="Resource_sswwg"]
 script = ExtResource("2_box")
-center = Vector4(-4.7, 4.0, -5.0, 5.0)
+center = Vector4(-4.7, 4, -5, 5)
 size = Vector4(3.2, 1.6, 3.6, 3.6)
 kind = "step"
 
@@ -225,14 +224,19 @@ title = "04  /  The fourfold labyrinth"
 subtitle = "Two depths below. A way home above."
 lesson = "Explore the teal courts in Z and W. Find five echoes, then climb home. Each echo saves a checkpoint; H gives guidance."
 hints = Array[String](["Lantern: follow Z from the entrance to the teal court (Z 0). Fold to W +5, then return along Z to -5.", "Orchard: from Lantern, return to Z 0 and cross X to the crossroads. At X 0, go to Z -5, then X +5.", "Heart: from Orchard, fold back to W 0. Walk to X 0, then follow Z to the central room at Z 0.", "Stillwater: from Heart, follow Z to +5, then X to -5. Fold into W +5 to discover the quiet alcove.", "Sky: leave Stillwater along X to +5. Fold to W 0, return to Z 0, and climb the pale steps outside the east wall. Follow the sky walk through W +5, X +5, then Z -5."])
-start = Vector4(-5.0, 0.0, -5.0, 0.0)
-goal = Vector4(-5.0, 4.8, -5.0, 5.0)
+start = Vector4(-5, 0, -5, 0)
+goal = Vector4(-5, 4.8, -5, 5)
 goal_hint = "From Sky at (X +5, Z -5, W +5), follow the raised bridge toward negative X. Jump the two final steps to the amber gate."
-boxes = Array[ExtResource("2_box")]([SubResource("Foundation"), SubResource("Wall_A00_A10"), SubResource("Wall_A00_B00"), SubResource("Wall_A01_A02"), SubResource("Wall_A10_B10"), SubResource("Wall_A11_A21"), SubResource("Wall_A11_B11"), SubResource("Wall_A12_A22"), SubResource("Wall_A20_A21"), SubResource("Wall_A21_B21"), SubResource("Wall_B00_B10"), SubResource("Wall_B01_B02"), SubResource("Wall_B11_B12"), SubResource("Wall_B20_B21"), SubResource("Wall_B21_B22"), SubResource("WestBoundary"), SubResource("NorthBoundary"), SubResource("SouthBoundary"), SubResource("NearBoundary"), SubResource("FarBoundary"), SubResource("EastBoundary_00"), SubResource("EastBoundary_02"), SubResource("EastBoundary_10"), SubResource("EastBoundary_11"), SubResource("EastBoundary_12"), SubResource("StairGarden"), SubResource("Ascent_0"), SubResource("Ascent_1"), SubResource("Ascent_2"), SubResource("Ascent_3"), SubResource("SkyFold"), SubResource("SkyEast"), SubResource("SkyNorth"), SubResource("SkyHome"), SubResource("HomeStep"), SubResource("GateTerrace")])
-seeds = Array[Vector4]([Vector4(-5.0, 0.85, -5.0, 5.0), Vector4(5.0, 0.85, -5.0, 5.0), Vector4(0.0, 0.85, 0.0, 0.0), Vector4(-5.0, 0.85, 5.0, 5.0), Vector4(5.0, 4.05, -5.0, 5.0)])
+boxes = Array[ExtResource("2_box")]([SubResource("Resource_53uth"), SubResource("Resource_46kgw"), SubResource("Resource_wvsww"), SubResource("Resource_wjl2v"), SubResource("Resource_42ayk"), SubResource("Resource_q48jp"), SubResource("Resource_6v8qb"), SubResource("Resource_w6g5f"), SubResource("Resource_odyap"), SubResource("Resource_m0087"), SubResource("Resource_he6p0"), SubResource("Resource_f3n34"), SubResource("Resource_t3r5e"), SubResource("Resource_u2dcu"), SubResource("Resource_87wy5"), SubResource("Resource_pycio"), SubResource("Resource_ehyon"), SubResource("Resource_3l155"), SubResource("Resource_0f5yq"), SubResource("Resource_p68l2"), SubResource("Resource_a4e6w"), SubResource("Resource_12f5k"), SubResource("Resource_wcatj"), SubResource("Resource_27wfd"), SubResource("Resource_r3b8i"), SubResource("Resource_n4lys"), SubResource("Resource_jp81k"), SubResource("Resource_uxo3c"), SubResource("Resource_jp38v"), SubResource("Resource_w3vhu"), SubResource("Resource_s0ol3"), SubResource("Resource_omjmn"), SubResource("Resource_py4vb"), SubResource("Resource_8hyor"), SubResource("Resource_l6dcw"), SubResource("Resource_sswwg")])
+seeds = Array[Vector4]([Vector4(-5, 0.85, -5, 5), Vector4(5, 0.85, -5, 5), Vector4(0, 0.85, 0, 0), Vector4(-5, 0.85, 5, 5), Vector4(5, 4.05, -5, 5)])
 echo_names = Array[String](["Lantern", "Orchard", "Heart", "Stillwater", "Sky"])
-echo_checkpoints = Array[Vector4]([Vector4(-5.0, 0.0, -5.0, 5.0), Vector4(5.0, 0.0, -5.0, 5.0), Vector4(0.0, 0.0, 0.0, 0.0), Vector4(-5.0, 0.0, 5.0, 5.0), Vector4(5.0, 3.2, -5.0, 5.0)])
-waymark_positions = Array[Vector4]([Vector4(-5.0, 0.0, -5.8, 0.0), Vector4(-5.0, 0.0, 0.0, 0.0), Vector4(-5.0, 0.0, -5.8, 5.0), Vector4(0.0, 0.0, 0.0, 5.0), Vector4(5.0, 0.0, -5.8, 5.0), Vector4(0.0, 0.0, -0.7, 0.0), Vector4(-5.0, 0.0, 5.0, 0.0), Vector4(-5.0, 0.0, 5.8, 5.0), Vector4(5.0, 0.0, 0.0, 0.0), Vector4(11.2, 3.2, 0.0, 0.0), Vector4(5.0, 3.2, -5.8, 5.0), Vector4(-5.0, 4.8, -5.8, 5.0)])
-waymark_labels = Array[String](["THE FOURFOLD LABYRINTH\nFive echoes. One way home.", "FOLDING COURT\nHold E to explore W", "01 / LANTERN", "THE CROSSROADS\nExplore both depths", "02 / ORCHARD\nA way back through W", "03 / HEART", "QUIET ALCOVE\nA room beyond this slice", "04 / STILLWATER", "THE ASCENT\nSpace to climb", "SKY WALK\nFollow W +5", "05 / SKY ECHO", "HOME"])
-solution = Array[Vector4]([Vector4(-5.0, 0.0, -5.0, 0.0), Vector4(-5.0, 0.0, 0.0, 0.0), Vector4(-5.0, 0.0, 0.0, 5.0), Vector4(-5.0, 0.0, -5.0, 5.0), Vector4(-5.0, 0.0, 0.0, 5.0), Vector4(0.0, 0.0, 0.0, 5.0), Vector4(0.0, 0.0, -5.0, 5.0), Vector4(5.0, 0.0, -5.0, 5.0), Vector4(5.0, 0.0, -5.0, 0.0), Vector4(0.0, 0.0, -5.0, 0.0), Vector4(0.0, 0.0, 0.0, 0.0), Vector4(0.0, 0.0, 5.0, 0.0), Vector4(-5.0, 0.0, 5.0, 0.0), Vector4(-5.0, 0.0, 5.0, 5.0), Vector4(0.0, 0.0, 5.0, 5.0), Vector4(5.0, 0.0, 5.0, 5.0), Vector4(5.0, 0.0, 5.0, 0.0), Vector4(5.0, 0.0, 0.0, 0.0), Vector4(5.6, 0.0, 0.0, 0.0), Vector4(7.0, 0.8, 0.0, 0.0), Vector4(8.4, 1.6, 0.0, 0.0), Vector4(9.8, 2.4, 0.0, 0.0), Vector4(11.2, 3.2, 0.0, 0.0), Vector4(11.2, 3.2, 0.0, 5.0), Vector4(5.0, 3.2, 0.0, 5.0), Vector4(5.0, 3.2, -5.0, 5.0), Vector4(0.0, 3.2, -5.0, 5.0), Vector4(-1.0, 3.2, -5.0, 5.0), Vector4(-2.4, 4.0, -5.0, 5.0), Vector4(-3.8, 4.8, -5.0, 5.0), Vector4(-5.0, 4.8, -5.0, 5.0)])
-jump_segments = Array[int]([18, 19, 20, 21, 27, 28])
+echo_checkpoints = Array[Vector4]([Vector4(-5, 0, -5, 5), Vector4(5, 0, -5, 5), Vector4(0, 0, 0, 0), Vector4(-5, 0, 5, 5), Vector4(5, 3.2, -5, 5)])
+waymark_positions = Array[Vector4]([Vector4(-5, 0, -5.8, 0), Vector4(-5, 0, 0, 0), Vector4(-5, 0, -5.8, 5), Vector4(0, 0, 0, 5), Vector4(5, 0, -5.8, 5), Vector4(0, 0, -0.7, 0), Vector4(-5, 0, 5, 0), Vector4(-5, 0, 5.8, 5), Vector4(5, 0, 0, 0), Vector4(11.2, 3.2, 0, 0), Vector4(5, 3.2, -5.8, 5), Vector4(-5, 4.8, -5.8, 5)])
+waymark_labels = Array[String](["THE FOURFOLD LABYRINTH
+Five echoes. One way home.", "FOLDING COURT
+Hold E to explore W", "01 / LANTERN", "THE CROSSROADS
+Explore both depths", "02 / ORCHARD
+A way back through W", "03 / HEART", "QUIET ALCOVE
+A room beyond this slice", "04 / STILLWATER", "THE ASCENT
+Space to climb", "SKY WALK
+Follow W +5", "05 / SKY ECHO", "HOME"])

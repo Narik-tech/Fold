@@ -23,6 +23,7 @@ func _run() -> void:
 	_test_title_and_mute()
 	_test_pause_and_echo()
 	_test_fold_and_jump()
+	_test_airborne_folding()
 	_test_rotation_timing_and_movement()
 	_test_restart_and_respawn()
 	_test_completion()
@@ -86,7 +87,8 @@ func _test_fold_and_jump() -> void:
 	_key_event(KEY_D, true)
 	game._physics_process(0.2)
 	_expect(game.rotating and is_equal_approx(game.angle, -PI * 0.1), "Holding Q gradually turns the slice in the negative direction")
-	_expect(game.position4 == before, "Held slice rotation pauses walking even when a movement key is held")
+	_expect(is_equal_approx((game.position4 - before).length(), game.SPEED * 0.2), "Holding movement and Q walks at full speed while turning the slice")
+	before = game.position4
 	_key_event(KEY_D, false)
 	game._physics_process(0.1)
 	_expect(is_equal_approx(game.angle, -PI * 0.15), "Q keeps turning on subsequent frames without keyboard repeat")
@@ -114,7 +116,7 @@ func _test_fold_and_jump() -> void:
 	_key_event(KEY_Q, false)
 	game._physics_process(DT)
 	_expect(not game.rotating and is_equal_approx(game.angle, partial_angle), "Releasing both keys stops at the current intermediate angle")
-	_expect(game.position4 == before, "Rotating the slice preserves all four world coordinates")
+	_expect(game.position4 == before, "Rotating on supported ground without movement preserves all four world coordinates")
 	game._restart()
 	_key_event(KEY_E, true)
 	game._physics_process(1.2)
@@ -122,11 +124,21 @@ func _test_fold_and_jump() -> void:
 	game._physics_process(1.2)
 	_expect(game.rotating and is_equal_approx(game.angle, -PI * 0.8), "Held rotation wraps smoothly through a half turn")
 	_tap(KEY_SPACE)
-	game._physics_process(0.2)
-	_expect(game.grounded and is_zero_approx(game.jump_buffer), "A buffered jump expires while rotation holds the traveler in place")
+	game._physics_process(DT)
+	_expect(not game.grounded and game.vertical_speed > 0.0 and game.rotating, "Space launches a jump while E remains held")
+	var launch_speed: float = game.vertical_speed
+	var launch_height: float = game.position4.y
+	game._physics_process(DT)
+	_expect(game.position4.y > launch_height and is_equal_approx(game.vertical_speed, launch_speed - game.GRAVITY * DT), "Held rotation preserves the rising jump and normal gravity")
+	for unused in range(60):
+		game._physics_process(DT)
+	_expect(game.grounded and is_zero_approx(game.position4.y) and is_zero_approx(game.vertical_speed) and game.rotating, "A jump lands normally while E stays held throughout the arc")
 	_key_event(KEY_E, false)
 	game._physics_process(DT)
-	_expect(game.grounded and is_zero_approx(game.vertical_speed), "Releasing rotation does not trigger an expired jump")
+	_expect(game.grounded and is_zero_approx(game.vertical_speed), "Releasing rotation after landing does not launch another jump")
+
+
+func _test_airborne_folding() -> void:
 	game._restart()
 	_tap(KEY_SPACE)
 	_expect(game.jump_buffer > 0.1, "Space fills the jump buffer")
@@ -135,10 +147,42 @@ func _test_fold_and_jump() -> void:
 	_expect(is_equal_approx(game.jump_buffer, 0.03), "Keyboard repeat does not refill the jump buffer")
 	game._physics_process(DT)
 	_expect(not game.grounded and game.vertical_speed > 0.0, "Buffered keyboard jump launches the player")
+	var before: Vector4 = game.position4
+	var speed_before: float = game.vertical_speed
 	_key_event(KEY_Q, true)
+	_key_event(KEY_D, true)
 	game._physics_process(DT)
+	_expect(game.rotating and is_equal_approx(game.angle, -game.ROTATION_SPEED * DT), "Pressing Q while rising immediately turns the slice")
+	var change: Vector4 = game.position4 - before
+	_expect(is_equal_approx(Vector3(change.x, change.z, change.w).length(), game.SPEED * DT) and change.y > 0.0,
+		"Walking, rising, and folding happen together in the same physics frame")
+	_expect(is_equal_approx(game.vertical_speed, speed_before - game.GRAVITY * DT), "Beginning an airborne fold preserves vertical momentum")
+	var partial_angle: float = game.angle
+	before = game.position4
+	speed_before = game.vertical_speed
 	_key_event(KEY_Q, false)
-	_expect(not game.rotating and is_zero_approx(game.angle), "Held slice input is rejected in the air")
+	game._physics_process(DT)
+	change = game.position4 - before
+	_expect(not game.rotating and is_equal_approx(game.angle, partial_angle)
+		and is_equal_approx(Vector3(change.x, change.z, change.w).length(), game.SPEED * DT)
+		and is_equal_approx(game.vertical_speed, speed_before - game.GRAVITY * DT),
+		"Releasing Q in midair stops rotation while walking and the jump continue")
+	_key_event(KEY_D, false)
+	for unused in range(25):
+		game._physics_process(DT)
+	_expect(not game.grounded and game.vertical_speed < 0.0, "The traveler reaches the descending part of the jump")
+	before = game.position4
+	speed_before = game.vertical_speed
+	_key_event(KEY_E, true)
+	game._physics_process(DT)
+	_expect(game.rotating and is_equal_approx(game.angle, partial_angle + game.ROTATION_SPEED * DT)
+		and game.position4.y < before.y and is_equal_approx(game.vertical_speed, speed_before - game.GRAVITY * DT),
+		"Pressing E while falling rotates immediately without interrupting the descent")
+	for unused in range(30):
+		game._physics_process(DT)
+	_expect(game.grounded and game.rotating and is_zero_approx(game.position4.y), "A fold started during descent continues through a safe landing")
+	_key_event(KEY_E, false)
+	game._physics_process(DT)
 
 
 func _test_rotation_timing_and_movement() -> void:
@@ -190,9 +234,21 @@ func _test_restart_and_respawn() -> void:
 
 
 func _test_completion() -> void:
-	game.position4 = game.level.goal
-	game._check_objectives()
-	_expect(game.completed and game.hud._completion_overlay.visible, "Unlocked gate opens the completion screen")
+	game.position4 = game.level.goal - Vector4(1.0, 0.0, 0.0, 0.0)
+	var forward := -Vector2(game.world.camera.global_basis.z.x, game.world.camera.global_basis.z.z).normalized()
+	game.world.orbit_camera(Vector2(-forward.angle() / game.world.mouse_sensitivity, 0.0))
+	_key_event(KEY_W, true)
+	_key_event(KEY_E, true)
+	game._physics_process(DT)
+	_expect(game.completed and game.hud._completion_overlay.visible and not game.rotating,
+		"Walking into the unlocked gate during a fold opens completion and ends rotation")
+	var completed_position: Vector4 = game.position4
+	var completed_angle: float = game.angle
+	game._physics_process(0.2)
+	_expect(game.position4 == completed_position and is_equal_approx(game.angle, completed_angle),
+		"Completion freezes position and angle even while walking and folding keys remain held")
+	_key_event(KEY_W, false)
+	_key_event(KEY_E, false)
 	_tap(KEY_ESCAPE)
 	_expect(not game.paused, "Escape does not put a pause menu over completion")
 	var before: Vector4 = game.position4
@@ -208,30 +264,30 @@ func _test_completion() -> void:
 
 func _test_campaign_navigation() -> void:
 	var total: int = game.levels.size()
-	_expect(total == 4, "The maze is available as the fourth campaign garden")
+	_expect(total == 5, "The folded ascent is available as the fifth campaign garden")
 	_expect(game.hud._level_buttons.size() == total and game.hud._pause_level_buttons.size() == total, "Both chapter menus show every campaign level")
 	_expect(game.hud._campaign_label.text.begins_with("%d GARDENS" % total), "The title reflects the campaign's actual garden count")
 	_tap(KEY_ESCAPE)
 	_expect(game.hud._pause_chapters.visible, "Pause exposes chapter selection while the cursor is free")
 	game.hud._pause_level_buttons[total - 1].pressed.emit()
-	_expect(game.level_index == total - 1 and not game.paused, "The last pause-menu chapter button opens the labyrinth and resumes play")
-	_expect(game.level.title == "04  /  The fourfold labyrinth" and game.hud._seed_label.text == "0 / 5", "The labyrinth starts with its five-echo objective")
+	_expect(game.level_index == total - 1 and not game.paused, "The last pause-menu chapter button opens the ascent and resumes play")
+	_expect(game.level.title == "05  /  The folded ascent" and game.hud._seed_label.text == "0 / %d" % game.level.seeds.size(), "The ascent starts with its echo objective")
 	game.position4 = game.level.goal
 	game._check_objectives()
-	_expect(not game.completed, "The labyrinth exit waits for all five echoes")
+	_expect(not game.completed, "The ascent exit waits for all its echoes")
 	game.collected.fill(true)
 	game._check_objectives()
-	_expect(game.completed and game.hud._final_level, "The fourth garden receives campaign completion")
+	_expect(game.completed and game.hud._final_level, "The fifth garden receives campaign completion")
 	_tap(KEY_ENTER)
-	_expect(game.level_index == 0 and not game.completed, "Finishing the labyrinth returns to the first garden")
+	_expect(game.level_index == 0 and not game.completed, "Finishing the ascent returns to the first garden")
 	_tap(KEY_ESCAPE)
 	game.hud._pause_level_buttons[total - 2].pressed.emit()
 	game.collected.fill(true)
 	game.position4 = game.level.goal
 	game._check_objectives()
-	_expect(game.completed and not game.hud._final_level, "The third garden now leads onward instead of ending the campaign")
+	_expect(game.completed and not game.hud._final_level, "The labyrinth leads onward instead of ending the campaign")
 	_tap(KEY_ENTER)
-	_expect(game.level_index == total - 1 and not game.completed, "The third garden advances directly to the labyrinth")
+	_expect(game.level_index == total - 1 and not game.completed, "The labyrinth advances directly to the folded ascent")
 	game._select_level(0)
 	game.started = false
 	game._sync_mouse_mode()
@@ -239,6 +295,12 @@ func _test_campaign_navigation() -> void:
 	_expect(game.hud._labyrinth_button.visible, "The title offers a direct labyrinth shortcut")
 	game.hud._labyrinth_button.pressed.emit()
 	_expect(game.level_index == 3 and game.started and not game.hud._title_overlay.visible, "The title shortcut starts the labyrinth immediately")
+	game.started = false
+	game._sync_mouse_mode()
+	game.hud.show_title()
+	_expect(game.hud._ascent_button.visible, "The title offers a direct ascent shortcut")
+	game.hud._ascent_button.pressed.emit()
+	_expect(game.level_index == 4 and game.started and not game.hud._title_overlay.visible, "The title shortcut starts the folded ascent immediately")
 
 
 func _tap(key: Key) -> void:

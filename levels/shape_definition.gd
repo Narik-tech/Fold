@@ -1,20 +1,22 @@
 @tool
 class_name FoldShape
 extends Resource
-## A regular 4D polytope made only of solid edge beams, with open cells/faces.
+## A regular 4D polytope, either an open edge frame or a filled convex solid.
 
 const Geometry = preload("res://scripts/polytope_geometry.gd")
 
 @export_enum("5-cell", "tesseract", "16-cell", "24-cell", "120-cell", "600-cell") var kind: String = "tesseract"
+## Edge frames have open faces and cells; solid faces enclose a filled interior.
+@export_enum("edges", "solid") var representation: String = "edges"
 @export var center: Vector4 = Vector4(0.0, 3.0, 0.0, 0.0)
 ## Center-to-vertex distance. Edge thickness is independent of this scale.
 @export var scale: float = 4.0
-## Full width of the solid edge beams in world units.
+## Full width of edge beams in world units; unused by solid faces.
 @export var edge_thickness: float = 0.18
 
 
 func to_dictionary() -> Dictionary:
-	return {"kind": kind, "center": center, "scale": scale, "edge_thickness": edge_thickness}
+	return {"kind": kind, "representation": representation, "center": center, "scale": scale, "edge_thickness": edge_thickness}
 
 
 func world_vertices() -> Array[Vector4]:
@@ -28,6 +30,8 @@ func validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if kind not in Geometry.TYPES:
 		errors.append("Choose a supported regular 4D shape.")
+	if representation not in ["edges", "solid"]:
+		errors.append("Choose an edge frame or solid faces representation.")
 	if not center.is_finite():
 		errors.append("Center must contain finite X, Y, Z, and W coordinates.")
 	if not is_finite(scale) or scale <= 0.0:

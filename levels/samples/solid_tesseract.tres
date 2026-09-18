@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="FoldLevel" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" path="res://levels/box_definition.gd" id="2_box"]
+[ext_resource type="Script" path="res://levels/shape_definition.gd" id="3_shape"]
+
+[sub_resource type="Resource" id="Floor"]
+script = ExtResource("2_box")
+center = Vector4(0, -0.5, 0, 0)
+size = Vector4(16, 1, 14, 14)
+kind = "stone"
+
+[sub_resource type="Resource" id="Shape"]
+script = ExtResource("3_shape")
+kind = "tesseract"
+representation = "solid"
+center = Vector4(0, 1, 0, 0)
+scale = 2.5
+edge_thickness = 0.14
+
+[resource]
+script = ExtResource("1_level")
+title = "Solid shape sample / tesseract"
+subtitle = "Eight cubic boundary cells."
+lesson = "Explore a filled tesseract. Its opaque slice has solid faces: walk around it in W to reach the far side."
+hints = Array[String](["Stay at X -6.5, hold E to 90 degrees, release, and walk to W +2 for the first echo.", "Continue to W +4.5, beyond the shape. Walk along X to the second echo at X 0.", "Keep W +4.5 until X +6.5, then walk back to W 0 for the amber gate."])
+start = Vector4(-6.5, 0, 0, 0)
+goal = Vector4(6.5, 0, 0, 0)
+goal_hint = "Go around the solid at W +4.5; return to W 0 at X +6.5."
+boxes = Array[ExtResource("2_box")]([SubResource("Floor")])
+shapes = Array[ExtResource("3_shape")]([SubResource("Shape")])
+seeds = Array[Vector4]([Vector4(-6.5, 0.85, 0, 2), Vector4(0, 0.85, 0, 4.5)])
+solution = Array[Vector4]([Vector4(-6.5, 0, 0, 0), Vector4(-6.5, 0, 0, 2), Vector4(-6.5, 0, 0, 4.5), Vector4(0, 0, 0, 4.5), Vector4(6.5, 0, 0, 4.5), Vector4(6.5, 0, 0, 0)])
+jump_segments = Array[int]([])
+

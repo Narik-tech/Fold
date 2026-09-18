@@ -188,14 +188,17 @@ func _draw_shape(index: int, selected_outline: bool) -> void:
 	var shape: FoldShape = document.shape_at(index)
 	var vertices := _shape_vertices(index)
 	var color := Color.WHITE if selected_outline else _object_color(index)
-	var width := 2.8 if selected_outline else 1.5
-	for edge: Vector2i in Polytopes.topology(shape.kind).edges:
-		var a: Vector4 = vertices[edge.x]
-		var b: Vector4 = vertices[edge.y]
-		draw_line(_project_point(a), _project_point(b), Color(color, 0.24 if selected_outline else 0.18), width, true)
-		var interval := _slice_segment(a, b, shape.edge_thickness)
-		if not interval.is_empty():
-			draw_line(_project_point(a.lerp(b, interval[0])), _project_point(a.lerp(b, interval[1])), Color(color, 0.95), width, true)
+	if shape.representation == "solid":
+		_draw_solid_shape(index, selected_outline, color)
+	else:
+		var width := 2.8 if selected_outline else 1.5
+		for edge: Vector2i in Polytopes.topology(shape.kind).edges:
+			var a: Vector4 = vertices[edge.x]
+			var b: Vector4 = vertices[edge.y]
+			draw_line(_project_point(a), _project_point(b), Color(color, 0.24 if selected_outline else 0.18), width, true)
+			var interval := _slice_segment(a, b, shape.edge_thickness)
+			if not interval.is_empty():
+				draw_line(_project_point(a.lerp(b, interval[0])), _project_point(a.lerp(b, interval[1])), Color(color, 0.95), width, true)
 	var center := _project_point(_object_position(index))
 	draw_circle(center, 10.0 if selected_outline else 5.0, Color(color, 0.95), false, 1.5, true)
 	if not selected_outline:
@@ -203,9 +206,44 @@ func _draw_shape(index: int, selected_outline: bool) -> void:
 		draw_string(get_theme_default_font(), center + Vector2(14.0, -12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, TEXT_COLOR)
 
 
+func _shape_polygon(index: int, slice_only: bool = false) -> PackedVector2Array:
+	var shape: FoldShape = document.shape_at(index)
+	var vertices := _shape_vertices(index)
+	var points := PackedVector2Array()
+	var hidden := hidden_axis()
+	for vertex: Vector4 in vertices:
+		if not slice_only or absf(vertex[hidden] - slice_position) < 0.00001:
+			points.append(_project_point(vertex))
+	if slice_only:
+		for edge: Vector2i in Polytopes.topology(shape.kind).edges:
+			var a: Vector4 = vertices[edge.x]
+			var b: Vector4 = vertices[edge.y]
+			if (a[hidden] < slice_position and b[hidden] > slice_position) or (a[hidden] > slice_position and b[hidden] < slice_position):
+				points.append(_project_point(a.lerp(b, (slice_position - a[hidden]) / (b[hidden] - a[hidden]))))
+	if points.size() < 3:
+		return PackedVector2Array()
+	var polygon := Geometry2D.convex_hull(points)
+	# Geometry2D repeats the first vertex; drawing/hit testing use an open list.
+	if polygon.size() > 1 and polygon[0].is_equal_approx(polygon[-1]):
+		polygon.remove_at(polygon.size() - 1)
+	return polygon if polygon.size() >= 3 else PackedVector2Array()
+
+
+func _draw_solid_shape(index: int, selected_outline: bool, color: Color) -> void:
+	for in_slice: bool in [false, true]:
+		var polygon := _shape_polygon(index, in_slice)
+		if polygon.is_empty():
+			continue
+		if not selected_outline:
+			draw_colored_polygon(polygon, Color(color, 0.38 if in_slice else 0.065))
+		var outline := polygon.duplicate()
+		outline.append(outline[0])
+		draw_polyline(outline, Color(color, 0.95 if in_slice else 0.25), 2.8 if selected_outline else 1.5, true)
+
+
 func _hit_test(point: Vector2) -> int:
-	# Markers take precedence, followed by actual frame edges or their center
-	# handles. Empty projected interiors never act like filled shape hit boxes.
+	# Markers take precedence, followed by solid projections and frame edges.
+	# Open frame interiors remain empty hit targets.
 	for index in document.object_count():
 		if not document.is_box(index) and not document.is_shape(index):
 			if point.distance_to(_object_rect(index).get_center()) <= 15.0:
@@ -216,6 +254,8 @@ func _hit_test(point: Vector2) -> int:
 		var distance := point.distance_to(_project_point(_object_position(index)))
 		var vertices := _shape_vertices(index)
 		var shape: FoldShape = document.shape_at(index)
+		if shape.representation == "solid" and Geometry2D.is_point_in_polygon(point, _shape_polygon(index)):
+			distance = 0.0
 		for edge: Vector2i in Polytopes.topology(shape.kind).edges:
 			var closest := Geometry2D.get_closest_point_to_segment(point, _project_point(vertices[edge.x]), _project_point(vertices[edge.y]))
 			distance = minf(distance, point.distance_to(closest))

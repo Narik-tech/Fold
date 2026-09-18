@@ -5,6 +5,7 @@ extends Node3D
 
 const Geometry = preload("res://scripts/slice_geometry.gd")
 const Edges = preload("res://scripts/edge_geometry.gd")
+const Solids = preload("res://scripts/solid_geometry.gd")
 const CAMERA_DISTANCE := 4.8
 const CAMERA_HEIGHT := 2.4
 const CAMERA_FOCUS_HEIGHT := 1.0
@@ -66,7 +67,12 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 	_camera_shapes.clear()
 	_camera_boxes.clear()
 	_camera_ready = false
-	shape_solids = Edges.compile_shapes(_level.get("shapes", []))
+	shape_solids.clear()
+	for shape: Dictionary in _level.get("shapes", []):
+		if shape.get("representation", "edges") == "solid":
+			shape_solids.append(Solids.compile_shape(shape))
+		else:
+			shape_solids.append_array(Edges.compile_shapes([shape]))
 	_shape_slice_key = Vector4(INF, INF, INF, INF)
 	seed_visuals.clear()
 	echo_rings.clear()
@@ -81,12 +87,12 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 		box_visuals.append(mesh)
 	for shape in shape_solids:
 		var mesh := MeshInstance3D.new()
-		mesh.material_override = materials.edge
+		mesh.material_override = materials.solid if shape.get("representation", "edges") == "solid" else materials.edge
 		level_root.add_child(mesh)
 		shape_visuals.append(mesh)
 		_camera_shapes.append(null)
 		var fringe := MeshInstance3D.new()
-		fringe.material_override = materials.fringe
+		fringe.material_override = materials.solid_fringe if shape.get("representation", "edges") == "solid" else materials.fringe
 		fringe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		level_root.add_child(fringe)
 		shape_fringes.append(fringe)
@@ -113,13 +119,13 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 	_build_waymarks()
 
 
-func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating: bool,
+func update_slice(position4: Vector4, angle: float, _active_axis: int, _rotating: bool,
 		collected: Array[bool], clock: float, player_radius: float) -> void:
 	if _level.is_empty():
 		return
 	var visible_player_depth := position4.z * cos(angle) + position4.w * sin(angle)
 	_camera_boxes.clear()
-	_update_shape_slices(position4, angle, rotating, player_radius)
+	_update_shape_slices(position4, angle, player_radius)
 	for i in range(box_visuals.size()):
 		var box: Dictionary = _level.boxes[i]
 		var section: Dictionary = Geometry.slice_box(box.center, box.size, position4, angle)
@@ -128,7 +134,7 @@ func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating:
 		# A finite traveler can touch a solid just outside the mathematical plane.
 		# Show those contact margins as translucent silhouettes rather than letting
 		# them become invisible walls or invisible support at a slice boundary.
-		if not section.visible and not rotating:
+		if not section.visible:
 			# The traveler's collision footprint stays axis-aligned in Z and W,
 			# so both axes contribute to contact at an oblique slice angle.
 			var margin_size: Vector4 = box.size + Vector4(0, 0, player_radius * 2.0, player_radius * 2.0)
@@ -191,24 +197,24 @@ func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating:
 		portal_inner.scale.x = 0.92 + sin(clock * 2.5) * 0.08
 
 
-func _update_shape_slices(position4: Vector4, angle: float,
-		rotating: bool, player_radius: float) -> void:
+func _update_shape_slices(position4: Vector4, angle: float, player_radius: float) -> void:
 	var hidden := -position4.z * sin(angle) + position4.w * cos(angle)
-	var key := Vector4(hidden, angle, 0.0 if rotating else player_radius, 0.0)
+	var key := Vector4(hidden, angle, player_radius, 0.0)
 	if _shape_slice_key.is_equal_approx(key):
 		return
 	_shape_slice_key = key
 	for index in range(shape_solids.size()):
-		var edges: Array = shape_solids[index].edges
-		var mesh := Edges.slice_mesh(edges, position4, angle)
+		var shape: Dictionary = shape_solids[index]
+		var is_solid: bool = shape.get("representation", "edges") == "solid"
+		var mesh := Solids.slice_mesh(shape, position4, angle) if is_solid else Edges.slice_mesh(shape.edges, position4, angle)
 		shape_visuals[index].mesh = mesh
 		shape_visuals[index].visible = mesh.get_surface_count() > 0
 		_camera_shapes[index] = mesh.generate_triangle_mesh() if shape_visuals[index].visible else null
-		shape_fringes[index].visible = false
-		if not rotating:
-			var fringe := Edges.slice_mesh(edges, position4, angle, player_radius, Edges.BOTH_DEPTH_AXES)
-			shape_fringes[index].mesh = fringe
-			shape_fringes[index].visible = fringe.get_surface_count() > 0
+		# Movement and jumping continue through a fold, so near-plane collision
+		# and support must keep their contact silhouettes throughout the turn.
+		var fringe := Solids.slice_mesh(shape, position4, angle, player_radius) if is_solid else Edges.slice_mesh(shape.edges, position4, angle, player_radius, Edges.BOTH_DEPTH_AXES)
+		shape_fringes[index].mesh = fringe
+		shape_fringes[index].visible = fringe.get_surface_count() > 0
 
 func update_traveler(delta: float, clock: float, position4: Vector4, angle: float,
 		last_motion: Vector2, distance_walked: float, grounded: bool, walking: bool) -> void:
@@ -376,7 +382,11 @@ func _setup_materials() -> void:
 	fringe.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	fringe.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	materials["fringe"] = fringe
+	var solid_fringe := fringe.duplicate() as StandardMaterial3D
+	solid_fringe.albedo_color.a = 0.08
+	materials["solid_fringe"] = solid_fringe
 	materials["edge"] = _material(Color("89d0ca"), 0.12)
+	materials["solid"] = _material(Color("74b8b1"), 0.035)
 	materials["waymark"] = _material(Color("89c4b8"), 0.25)
 
 func _material(color: Color, emission: float = 0.0) -> StandardMaterial3D:

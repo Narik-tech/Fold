@@ -1,0 +1,113 @@
+[gd_resource type="Resource" script_class="FoldLevel" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://levels/level_definition.gd" id="1_level"]
+[ext_resource type="Script" path="res://levels/shape_definition.gd" id="2_shape"]
+
+[sub_resource type="Resource" id="Launch"]
+script = ExtResource("2_shape")
+kind = "tesseract"
+representation = "solid"
+center = Vector4(0, -1.2, 0, 0)
+scale = 2.4
+
+[sub_resource type="Resource" id="FirstLeap"]
+script = ExtResource("2_shape")
+kind = "24-cell"
+representation = "solid"
+center = Vector4(3, -0.85, 0, 0)
+scale = 1.2
+
+[sub_resource type="Resource" id="FirstFold"]
+script = ExtResource("2_shape")
+kind = "tesseract"
+representation = "solid"
+center = Vector4(6, -0.5, 0, 0)
+scale = 2.4
+
+[sub_resource type="Resource" id="HiddenLeap"]
+script = ExtResource("2_shape")
+kind = "16-cell"
+representation = "solid"
+center = Vector4(6, -0.15, 0, 3)
+scale = 1.2
+
+[sub_resource type="Resource" id="AcrossW"]
+script = ExtResource("2_shape")
+kind = "tesseract"
+representation = "solid"
+center = Vector4(6, 0.2, 0, 6)
+scale = 2.4
+
+[sub_resource type="Resource" id="HighLeap"]
+script = ExtResource("2_shape")
+kind = "24-cell"
+representation = "solid"
+center = Vector4(9, 0.55, 0, 6)
+scale = 1.2
+
+[sub_resource type="Resource" id="TurnToZ"]
+script = ExtResource("2_shape")
+kind = "tesseract"
+representation = "solid"
+center = Vector4(12, 0.9, 0, 6)
+scale = 2.4
+
+[sub_resource type="Resource" id="DepthLeap"]
+script = ExtResource("2_shape")
+kind = "16-cell"
+representation = "solid"
+center = Vector4(12, 1.25, 3, 6)
+scale = 1.2
+
+[sub_resource type="Resource" id="AcrossZ"]
+script = ExtResource("2_shape")
+kind = "tesseract"
+representation = "solid"
+center = Vector4(12, 1.6, 6, 6)
+scale = 2.4
+
+[sub_resource type="Resource" id="CrownLeap"]
+script = ExtResource("2_shape")
+kind = "24-cell"
+representation = "solid"
+center = Vector4(15, 1.95, 6, 6)
+scale = 1.2
+
+[sub_resource type="Resource" id="LastFold"]
+script = ExtResource("2_shape")
+kind = "tesseract"
+representation = "solid"
+center = Vector4(18, 2.3, 6, 6)
+scale = 2.4
+
+[sub_resource type="Resource" id="FinalLeap"]
+script = ExtResource("2_shape")
+kind = "16-cell"
+representation = "solid"
+center = Vector4(18, 2.65, 6, 9)
+scale = 1.2
+
+[sub_resource type="Resource" id="Summit"]
+script = ExtResource("2_shape")
+kind = "tesseract"
+representation = "solid"
+center = Vector4(18, 3, 6, 12)
+scale = 2.4
+
+[resource]
+script = ExtResource("1_level")
+title = "05  /  The folded ascent"
+subtitle = "Thirteen shapes. Twelve leaps. Four dimensions."
+lesson = "Space + move to jump from shape to shape. Land on the tips, rest on the broad cubes, and fold to find the next leap. Five echoes save your progress."
+hints = Array[String](["First fold: jump along X across the pointed 24-cell to the broad tesseract at X +6. Aim for each shape's center; Space starts a fresh jump after landing.", "Across W: on the first echo's tesseract, hold E to 90 degrees. Jump along W across the diamond tip at W +3 to the tesseract at W +6.", "High perch: keep W +6. Jump along X across the next pointed shape to the broad tesseract at X +12.", "Across Z: hold Q back to 0 degrees on High perch. Jump along Z across the diamond at Z +3 to the tesseract at Z +6. Keep W +6.", "Last fold: stay at Z +6 / W +6. Jump along X across the 24-cell to the final echo at X +18. Each echo is a safe checkpoint if you miss a landing."])
+start = Vector4(0, 0, 0, 0)
+goal = Vector4(18, 4.2, 6, 12)
+goal_hint = "At the Last fold echo, hold E to 90 degrees. Jump along W across the diamond at W +9, then land on the amber gate's tesseract at W +12."
+shapes = Array[ExtResource("2_shape")]([SubResource("Launch"), SubResource("FirstLeap"), SubResource("FirstFold"), SubResource("HiddenLeap"), SubResource("AcrossW"), SubResource("HighLeap"), SubResource("TurnToZ"), SubResource("DepthLeap"), SubResource("AcrossZ"), SubResource("CrownLeap"), SubResource("LastFold"), SubResource("FinalLeap"), SubResource("Summit")])
+seeds = Array[Vector4]([Vector4(6, 1.55, 0, 0), Vector4(6, 2.25, 0, 6), Vector4(12, 2.95, 0, 6), Vector4(12, 3.65, 6, 6), Vector4(18, 4.35, 6, 6)])
+echo_names = Array[String](["First fold", "Across W", "High perch", "Across Z", "Last fold"])
+echo_checkpoints = Array[Vector4]([Vector4(6, 0.7, 0, 0), Vector4(6, 1.4, 0, 6), Vector4(12, 2.1, 0, 6), Vector4(12, 2.8, 6, 6), Vector4(18, 3.5, 6, 6)])
+waymark_positions = Array[Vector4]([Vector4(0, 0, -0.7, 0), Vector4(6, 0.7, -0.7, 0), Vector4(6, 1.4, 0, 6.7), Vector4(12, 2.1, 0, 6.7), Vector4(12, 2.8, 6.7, 6), Vector4(18, 3.5, 6.7, 6), Vector4(18, 4.2, 6, 12.7)])
+waymark_labels = Array[String](["THE FOLDED ASCENT\nSpace + move to leap", "FIRST FOLD\nHold E to 90 degrees", "ACROSS W\nJump toward X +12", "HIGH PERCH\nHold Q to 0 degrees", "ACROSS Z\nJump toward X +18", "LAST FOLD\nHold E to 90 degrees", "SUMMIT\nThe amber gate"])
+solution = Array[Vector4]([Vector4(0, 0, 0, 0), Vector4(3, 0.35, 0, 0), Vector4(6, 0.7, 0, 0), Vector4(6, 1.05, 0, 3), Vector4(6, 1.4, 0, 6), Vector4(9, 1.75, 0, 6), Vector4(12, 2.1, 0, 6), Vector4(12, 2.45, 3, 6), Vector4(12, 2.8, 6, 6), Vector4(15, 3.15, 6, 6), Vector4(18, 3.5, 6, 6), Vector4(18, 3.85, 6, 9), Vector4(18, 4.2, 6, 12)])
+jump_segments = Array[int]([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])

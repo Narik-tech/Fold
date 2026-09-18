@@ -43,7 +43,7 @@ The FOLD Levels workspace preserves this metadata through saves and undo. Adding
 
 ## Explore regular 4D shapes
 
-Choose a shape under **4D EDGE FRAMES** and click **+ 4D Shape**. All six convex regular 4D polytopes are available:
+Choose a shape under **4D SHAPES**, choose **Edge frame** or **Solid faces**, and click **+ 4D Shape**. All six convex regular 4D polytopes are available in both representations:
 
 | Shape | Vertices | Solid edges | Sample level |
 | --- | ---: | ---: | --- |
@@ -54,11 +54,15 @@ Choose a shape under **4D EDGE FRAMES** and click **+ 4D Shape**. All six convex
 | 120-cell | 600 | 1200 | `res://levels/samples/120_cell.tres` |
 | 600-cell | 120 | 720 | `res://levels/samples/600_cell.tres` |
 
-Use **4D Samples** on the toolbar to open a simple playable garden demonstrating each shape. The shape is selected automatically; click **Playtest** to explore it, or **Save As** to adapt it into a custom level. Opening a sample prompts if the current document has unsaved changes. See [the sample guide](SHAPE_SAMPLES.md) for their routes and launch commands.
+Use **4D Samples** on the toolbar to open an **edge frame** or **solid faces** garden for each shape. The table lists the frame resources; solid resources use the same filename with a `solid_` prefix. The shape is selected automatically; click **Playtest** to explore it, or **Save As** to adapt it into a custom level. Opening a sample prompts if the current document has unsaved changes. See [the sample guide](SHAPE_SAMPLES.md) for their routes and launch commands.
 
-A frame is one editable object. Set its **Position / center** in X, Y, Z, and W. **Scale** is the distance from the center to each vertex, so doubling it doubles the entire shape in all four axes. **Edge thickness** is the full width of the solid beams and stays independent of scale. Only these beams have collision: faces, cells, and the interior remain open for the player to walk or fold through. Larger scales or thinner edges leave more space, especially in the 120-cell and 600-cell.
+A shape is one editable object. Set its **Position / center** in X, Y, Z, and W. **Scale** is the distance from the center to each vertex, so doubling it doubles the entire shape in all four axes. Change **Representation** on a selected shape to switch its mode.
 
-The grids draw the actual projected edges, with portions outside the hidden-axis slice dimmed. Select an edge, the small center handle, or the object-list entry to move the whole frame. Empty projected interiors do not select the shape. Duplicate, delete, undo, redo, save, recovery, and playtest preserve the frame's kind, scale, thickness, and position. Use a floor beneath the frame for a simple walk-through exhibit.
+For **Edge frame**, **Edge thickness** is the full width of the solid beams and stays independent of scale. Only these beams collide: faces, cells, and the interior remain open for walking or folding through. Larger scales or thinner edges leave more space, especially in the 120-cell and 600-cell. The grids draw the projected edges, with portions outside the hidden-axis slice dimmed. Select an edge, the small center handle, or the object-list entry to move the frame. Empty projected interiors do not select it.
+
+For **Solid faces**, the entire convex four-dimensional volume is filled. The game renders its opaque three-dimensional cross-section, and collision prevents entering its interior from any fold angle. **Edge thickness** is disabled because it does not affect this mode. The grids shade its projection, which can be selected anywhere inside the projected outline. Leave room to walk around the solid; changing a frame to solid faces can block its old route and enclose markers. Check start, echoes, and gate after changing modes.
+
+Duplicate, delete, undo, redo, save, recovery, and playtest preserve the shape's representation, kind, scale, thickness, and position. Use a floor beneath the shape and playtest after moving or resizing it.
 
 ## A simple folding puzzle
 

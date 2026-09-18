@@ -52,6 +52,7 @@ var _orientation: OrientationView
 var _title_overlay: Control
 var _campaign_label: Label
 var _labyrinth_button: Button
+var _ascent_button: Button
 var _pause_overlay: Control
 var _completion_overlay: Control
 var _completion_title: Label
@@ -325,7 +326,7 @@ func _gap(box: VBoxContainer, height: float) -> void:
 
 func _build_title() -> void:
 	_title_overlay = _overlay()
-	var box := _overlay_box(_title_overlay, 580, 510)
+	var box := _overlay_box(_title_overlay, 580, 575)
 	_center_label(box, "A GARDEN BEYOND THREE DIMENSIONS", 11, TEAL)
 	var wordmark := _center_label(box, "F O L D", 88)
 	wordmark.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.18))
@@ -348,6 +349,14 @@ func _build_title() -> void:
 	_labyrinth_button.pressed.connect(func() -> void: level_requested.emit(3))
 	row.add_child(_labyrinth_button)
 	_labyrinth_button.hide()
+	var ascent_row := HBoxContainer.new()
+	ascent_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(ascent_row)
+	_ascent_button = _button("Jump the 4D shapes   →")
+	_ascent_button.custom_minimum_size = Vector2(502, 51)
+	_ascent_button.pressed.connect(func() -> void: level_requested.emit(4))
+	ascent_row.add_child(_ascent_button)
+	_ascent_button.hide()
 	_gap(box, 13)
 	_center_label(box, "MOUSE  look     ·     W A S D  move with camera     ·     SPACE  jump", 11, MUTED)
 	_center_label(box, "Hold Q − / E + to fold     ·     ESC  pause / free cursor", 11, MUTED)
@@ -415,7 +424,7 @@ func set_custom_level(value: bool) -> void:
 
 func _chapter_button(index: int) -> Button:
 	var button := _button("%02d" % (index + 1))
-	button.custom_minimum_size = Vector2(43, 32)
+	button.custom_minimum_size = Vector2(50, 32)
 	button.add_theme_font_size_override("font_size", 11)
 	button.add_theme_stylebox_override("normal", _style(Color(0.05, 0.14, 0.14, 0.68), Color(0.5, 0.72, 0.65, 0.18), 6))
 	button.pressed.connect(func() -> void: level_requested.emit(index))
@@ -426,6 +435,7 @@ func _update_navigation_visibility() -> void:
 	_level_nav.visible = show_chapters
 	_pause_chapters.visible = show_chapters
 	_labyrinth_button.visible = not _custom_level and _level_buttons.size() >= 4
+	_ascent_button.visible = not _custom_level and _level_buttons.size() >= 5
 
 func _setup_navigation(total: int) -> void:
 	if _level_buttons.size() != total:
@@ -444,7 +454,7 @@ func _setup_navigation(total: int) -> void:
 			var pause_button := _chapter_button(index)
 			_pause_level_nav.add_child(pause_button)
 			_pause_level_buttons.append(pause_button)
-	var nav_width := total * 43.0 + maxi(total - 1, 0) * 7.0
+	var nav_width := total * 50.0 + maxi(total - 1, 0) * 7.0
 	_level_nav.offset_left = -nav_width / 2.0
 	_level_nav.offset_right = nav_width / 2.0
 	_update_navigation_visibility()

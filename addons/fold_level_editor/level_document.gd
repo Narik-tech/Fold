@@ -156,7 +156,8 @@ func object_name(index: int) -> String:
 		var kind: String = level.boxes[index - 2].kind
 		return "%s %d" % ["Floor" if kind == "stone" else kind.capitalize(), index - 1]
 	if is_shape(index):
-		return "%s %d" % [SHAPE_LABELS.get(shape_at(index).kind, "4D shape"), index - 1 - level.boxes.size()]
+		var shape := shape_at(index)
+		return "%s%s %d" % ["Solid " if shape.representation == "solid" else "", SHAPE_LABELS.get(shape.kind, "4D shape"), index - 1 - level.boxes.size()]
 	return "Echo %d" % (_echo_index(index) + 1)
 
 
@@ -175,7 +176,7 @@ func object_position(index: int) -> Vector4:
 func object_size(index: int) -> Vector4:
 	if is_shape(index):
 		var shape := shape_at(index)
-		return Vector4.ONE * (shape.scale * 2.0 + shape.edge_thickness)
+		return Vector4.ONE * (shape.scale * 2.0 + (shape.edge_thickness if shape.representation == "edges" else 0.0))
 	return level.boxes[index - 2].size if is_box(index) else Vector4.ONE * 0.5
 
 
@@ -227,13 +228,23 @@ func set_edge_thickness(index: int, value: float) -> void:
 	changed.emit()
 
 
-func add_shape(kind: String) -> int:
-	if kind not in Polytopes.TYPES:
+func set_shape_representation(index: int, value: String) -> void:
+	if not is_shape(index) or value not in ["edges", "solid"] or shape_at(index).representation == value:
+		return
+	_remember()
+	_invalidate_solution()
+	shape_at(index).representation = value
+	changed.emit()
+
+
+func add_shape(kind: String, representation: String = "edges") -> int:
+	if kind not in Polytopes.TYPES or representation not in ["edges", "solid"]:
 		return -1
 	_remember()
 	_invalidate_solution()
 	var shape := Shape.new()
 	shape.kind = kind
+	shape.representation = representation
 	# The frame straddles the floor so the player can explore its open interior.
 	shape.center = Vector4(0.0, shape.scale * 0.35, 0.0, 0.0)
 	level.shapes.append(shape)

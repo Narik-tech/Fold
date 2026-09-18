@@ -1,10 +1,11 @@
 extends Node3D
-## FOLD: a 3D cross-section through a world of four-dimensional boxes and beams.
+## FOLD: a 3D cross-section through four-dimensional boxes, beams, and polytopes.
 ## Owns session state and four-dimensional simulation.
 ## Child scenes provide rendering, interface, and audio through explicit APIs.
 
 const Geometry = preload("res://scripts/slice_geometry.gd")
 const Edges = preload("res://scripts/edge_geometry.gd")
+const Solids = preload("res://scripts/solid_geometry.gd")
 const Levels = preload("res://scripts/level_data.gd")
 const SPEED: float = 4.2
 const ROTATION_SPEED: float = PI / 2.0
@@ -24,6 +25,7 @@ var levels: Array[Dictionary] = []
 var level_index: int = 0
 var level: Dictionary = {}
 var shape_solids: Array[Dictionary] = []
+var filled_solids: Array[Dictionary] = []
 var position4: Vector4 = Vector4.ZERO
 var respawn_position: Vector4 = Vector4.ZERO
 var vertical_speed: float = 0.0
@@ -79,6 +81,8 @@ func _ready() -> void:
 			_select_level(2)
 		if "--level4" in args:
 			_select_level(3)
+		if "--level5" in args:
+			_select_level(4)
 		if "--folded" in args:
 			active_axis = 1
 			angle = PI / 2.0
@@ -138,17 +142,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event is InputEventKey and event.pressed and event.keycode == KEY_ENTER:
 			_next_level()
 		return
-	if (event.is_action_pressed("fold_negative") or event.is_action_pressed("fold_positive")) and not grounded:
-		hud.show_toast("Touch down before folding.")
 	if event.is_action_pressed("jump"):
 		jump_buffer = 0.15
 
 func _physics_process(delta: float) -> void:
 	if not started or paused or completed:
 		return
-	if rotate_slice(Input.get_axis("fold_negative", "fold_positive"), delta):
-		jump_buffer = maxf(0.0, jump_buffer - delta)
-		return
+	# Folding steers the depth direction while movement and gravity keep running.
+	rotate_slice(Input.get_axis("fold_negative", "fold_positive"), delta)
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	simulate_motion(_camera_relative_motion(input), delta)
 
@@ -204,6 +205,9 @@ func _move_depth(amount: float) -> void:
 		for edge: Dictionary in shape.edges:
 			if Edges.bounds_overlap(edge, position4, RADIUS, HEIGHT, absf(travel)):
 				travel = _clip_depth_motion(travel, Edges.depth_movement_interval(edge, position4, angle, RADIUS, HEIGHT))
+	for shape: Dictionary in filled_solids:
+		if Edges.bounds_overlap(shape, position4, RADIUS, HEIGHT, absf(travel)):
+			travel = _clip_depth_motion(travel, Solids.depth_movement_interval(shape, position4, angle, RADIUS, HEIGHT))
 	position4 += direction * travel
 
 func _box_depth_interval(box: Dictionary, direction: Vector4) -> Vector2:
@@ -274,10 +278,24 @@ func _move_axis(axis: int, amount: float) -> void:
 				if hit and axis == 1:
 					grounded = step < 0.0
 					vertical_speed = 0.0
+		for shape: Dictionary in filled_solids:
+			if not Edges.bounds_overlap(shape, position4, RADIUS, HEIGHT, absf(step)):
+				continue
+			var interval := Solids.movement_interval(shape, position4, axis, RADIUS, HEIGHT)
+			var hit := false
+			if step > 0.0 and previous <= interval.x + Solids.EPS and position4[axis] > interval.x:
+				position4[axis] = interval.x
+				hit = true
+			elif step < 0.0 and previous >= interval.y - Solids.EPS and position4[axis] < interval.y:
+				position4[axis] = interval.y
+				hit = true
+			if hit and axis == 1:
+				grounded = step < 0.0
+				vertical_speed = 0.0
 
-## Holding Q/E changes the angle at a fixed rate; release keeps the current slice.
+## Holding Q/E changes the angle on the ground or in the air; release keeps it.
 func rotate_slice(direction: float, delta: float) -> bool:
-	if is_zero_approx(direction) or delta <= 0.0 or paused or completed or not started or not grounded:
+	if is_zero_approx(direction) or delta <= 0.0 or paused or completed or not started:
 		rotating = false
 		return false
 	if not rotating:
@@ -310,6 +328,7 @@ func _check_objectives() -> void:
 				hud.show_toast("All echoes found. Return to the amber gate." if _collected_count() == collected.size() else "An echo found in the quiet dimension.")
 	if _collected_count() == collected.size() and position4.distance_to(level.goal) < 0.95:
 		completed = true
+		rotating = false
 		_sync_mouse_mode()
 		hud.show_completion(level_index == levels.size() - 1)
 		sound.play_complete()
@@ -331,7 +350,7 @@ func _process(delta: float) -> void:
 
 func _refresh_view(delta: float = 0.0) -> void:
 	world.update_slice(position4, angle, active_axis, rotating, collected, clock, RADIUS)
-	var walking := last_motion.length() > 0.05 and started and not completed and not rotating
+	var walking := last_motion.length() > 0.05 and started and not completed
 	world.update_traveler(delta, clock, position4, angle, last_motion, distance_walked, grounded, walking)
 	world.update_camera(delta)
 	world.update_ambience(delta, clock)
@@ -422,6 +441,7 @@ func _load_level(index: int) -> void:
 	level_index = index
 	level = levels[index]
 	shape_solids = Edges.compile_shapes(level.get("shapes", []))
+	filled_solids = Solids.compile_shapes(level.get("shapes", []))
 	collected.clear()
 	for seed: Vector4 in level.seeds:
 		collected.append(false)

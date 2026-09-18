@@ -23,6 +23,8 @@ config/icon="res://assets/icon.svg"
 
 window/size/viewport_width=1440
 window/size/viewport_height=900
+window/size/mode=3
+window/size/borderless=true
 window/size/window_width_override=1280
 window/size/window_height_override=800
 window/stretch/mode="canvas_items"

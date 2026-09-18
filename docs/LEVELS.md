@@ -1,6 +1,6 @@
 # FOLD / The Quiet Dimension — original puzzle designs
 
-These four original levels introduce movement through four spatial coordinates and combine it in a maze. X is always available, Y is height, and rotating exchanges the visible depth direction between Z and W. Rotation preserves the player's coordinates, including the hidden coordinate. Solving a puzzle therefore changes the player's position in four dimensions; it does not toggle arbitrary geometry.
+These five original levels introduce movement through four spatial coordinates, combine it in a maze, and culminate in a jumping course across solid 4D shapes. X is always available, Y is height, and rotating exchanges the visible depth direction between Z and W. Rotation preserves the player's coordinates, including the hidden coordinate. Solving a puzzle therefore changes the player's position in four dimensions; it does not toggle arbitrary geometry.
 
 All coordinates below are `(X, Y, Z, W)` at the player's feet. Collectible coordinates in the `levels/*.tres` resources are floating centers, 0.85 units above the intended standing surface. Each resource also includes deterministic resting waypoints under `solution` and zero-based `jump_segments`: a value of 7 means jump from waypoint 7 to waypoint 8. `LevelData.solutions()` returns all waypoint arrays. Create and edit gardens visually using [FOLD Levels](LEVEL_EDITOR.md).
 
@@ -69,11 +69,30 @@ Spoiler route (hold E from 0° to approximately 90° to move in W; hold Q back t
 
 The editable resource is `levels/04_the_fourfold_labyrinth.tres`. Its proof route has 31 supported waypoints and six jump segments. Gameplay tests run the complete route with real physics, check alternate loop traversal and out-of-order collection, and verify that the entrance walls block direct shortcuts.
 
+## 05 / The folded ascent
+
+**Idea:** jump between floating 4D solids, using safe landings to fold toward the next pair of jumps.
+
+Thirteen solid shapes form a rising route with twelve required jumps and no supporting floor: seven broad tesseracts alternate with three pointed 24-cells and three pointed 16-cells. Each landing is 0.35 units above the previous one, reaching the gate at Y 4.2. Adjacent shape centers are three units apart along X, Z, or W. Aim for each shape's center and start a fresh jump after landing; the pointed shapes have less room to stand than the broad tesseracts.
+
+Five echoes on the intermediate tesseracts save safe checkpoints. Missing a landing returns the traveler to the latest echo while preserving collected echoes. Use H for the next missing echo's route, and R to reset the chapter. Choose **Jump the 4D shapes →** on the title screen or **Escape → 05** to enter directly.
+
+Spoiler route (each numbered leg contains two jumps):
+
+1. **First fold:** from `(0, 0, 0, 0)`, jump along X to the 24-cell at `(3, 0.35, 0, 0)`, then to the first echo at `(6, 0.7, 0, 0)`.
+2. **Across W:** hold E to 90° on the tesseract. Jump along W to the 16-cell at `(6, 1.05, 0, 3)`, then to the second echo at `(6, 1.4, 0, 6)`.
+3. **High perch:** keep Z 0 / W +6. Jump along X to the 24-cell at `(9, 1.75, 0, 6)`, then to the third echo at `(12, 2.1, 0, 6)`.
+4. **Across Z:** hold Q back to 0° on High perch. Jump along Z to the 16-cell at `(12, 2.45, 3, 6)`, then to the fourth echo at `(12, 2.8, 6, 6)`. Preserve W +6.
+5. **Last fold:** keep Z +6 / W +6. Jump along X to the 24-cell at `(15, 3.15, 6, 6)`, then to the fifth echo at `(18, 3.5, 6, 6)`.
+6. **Summit:** hold E to 90° on Last fold. Jump along W to the 16-cell at `(18, 3.85, 6, 9)`, then onto the gate's tesseract at `(18, 4.2, 6, 12)`.
+
+The editable resource is `levels/05_the_folded_ascent.tres`. Its proof route has thirteen supported waypoints, with every segment marked as a jump. Run `tests/test_shape_course.gd` to validate the course. Capture it with `-- --capture --level5`; add `--folded` to inspect the W view. This campaign chapter is separate from the twelve walking showcases in `levels/samples/`.
+
 ## Geometry conventions for validation
 
-- Floors are axis-aligned four-dimensional boxes with top Y 0. A player is 1.25 units tall, with horizontal radius 0.27 along X, Z, and W.
+- The first four gardens use axis-aligned four-dimensional boxes for floors and platforms. The fifth uses filled convex 4D shapes for every landing. A player is 1.25 units tall, with horizontal radius 0.27 along X, Z, and W.
 - An ordinary segment changes only X, Z, or W and keeps a supported feet height. It may require a view rotation before movement.
-- A tagged jump segment links resting positions on adjacent stair tops. Interpolating it as a straight walking segment is not a valid collision test; use the game's jump physics.
+- A tagged jump segment links resting positions on adjacent stair tops or solid shapes. Interpolating it as a straight walking segment is not a valid collision test; use the game's jump physics.
 - All routes keep both hidden and visible horizontal coordinates inside the supporting geometry.
 - Wall lengths intentionally extend beyond the floor in the direction that should be blocked; their other dimension contains the intended bypass.
 - The puzzles and geometry are original, inspired by the general concept of exploring four-dimensional spaces rather than reproducing another game's maps, assets, or narrative.

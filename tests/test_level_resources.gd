@@ -33,7 +33,7 @@ func _initialize() -> void:
 func _test_campaign_migration() -> void:
 	var expected: Array[Dictionary] = _original_levels()
 	var actual: Array[Dictionary] = Campaign.all_levels()
-	_expect(actual.size() == 4, "The campaign contains the original three gardens and the fourfold labyrinth")
+	_expect(actual.size() == 5, "The campaign contains the original gardens, the labyrinth, and the folded ascent")
 	for index in range(mini(expected.size(), actual.size())):
 		_expect(actual[index] == expected[index], "Level %d preserves every original authored field" % (index + 1))
 	var definitions: Array[FoldLevel] = Campaign.definitions()
@@ -58,6 +58,12 @@ func _test_campaign_migration() -> void:
 					maximum[axis] = maxf(maximum[axis], point[axis])
 			for axis in range(4):
 				_expect(maximum[axis] - minimum[axis] > 1.0, "The labyrinth route traverses dimension %s" % "XYZW"[axis])
+	if actual.size() > 4:
+		var ascent: Dictionary = actual[4]
+		_expect(ascent.title == "05  /  The folded ascent", "The fifth garden is the folded ascent")
+		_expect(ascent.boxes.is_empty() and not ascent.get("shapes", []).is_empty(), "The ascent uses 4D shapes without a continuous box floor")
+		_expect(ascent.jump_segments.size() >= 8, "The ascent records a sustained sequence of shape-to-shape jumps")
+		_expect(ascent.get("echo_checkpoints", []).size() == ascent.seeds.size() and not ascent.seeds.is_empty(), "Every ascent echo saves a recovery checkpoint")
 
 
 func _test_snapshot_isolation() -> void:

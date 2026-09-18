@@ -12,6 +12,8 @@ const BOTH_DEPTH_AXES := -1
 static func compile_shapes(shapes: Array) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for shape: Dictionary in shapes:
+		if shape.get("representation", "edges") == "solid":
+			continue
 		var topology: Dictionary = Polytopes.topology(shape.kind)
 		var edges: Array[Dictionary] = []
 		var low := Vector4(INF, INF, INF, INF)

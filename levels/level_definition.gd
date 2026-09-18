@@ -8,6 +8,7 @@ extends Resource
 const BoxDefinition = preload("res://levels/box_definition.gd")
 const Geometry = preload("res://scripts/slice_geometry.gd")
 const EdgeGeometry = preload("res://scripts/edge_geometry.gd")
+const SolidGeometry = preload("res://scripts/solid_geometry.gd")
 const PLAYER_RADIUS: float = 0.27
 const PLAYER_HEIGHT: float = 1.25
 const SUPPORT_EPSILON: float = 0.05
@@ -207,6 +208,7 @@ func _shape_geometry_for_validation() -> Array[Dictionary]:
 	if data != _validated_shape_data:
 		_validated_shape_data = data
 		_validated_shape_geometry = EdgeGeometry.compile_shapes(data)
+		_validated_shape_geometry.append_array(SolidGeometry.compile_shapes(data))
 	return _validated_shape_geometry
 
 
@@ -226,8 +228,16 @@ func _validate_position(position: Vector4, label: String, warnings: PackedString
 		if Geometry.intersects_player(position, box.center, box.size, PLAYER_RADIUS, PLAYER_HEIGHT):
 			blocked = true
 	var blocked_by_edge: bool = false
+	var blocked_by_shape: bool = false
 	for shape: Dictionary in edge_shapes:
 		if not EdgeGeometry.bounds_overlap(shape, position, PLAYER_RADIUS, PLAYER_HEIGHT, SUPPORT_EPSILON):
+			continue
+		if shape.get("representation", "edges") == "solid":
+			var interval := SolidGeometry.movement_interval(shape, position, 1, PLAYER_RADIUS, PLAYER_HEIGHT)
+			if interval.x <= interval.y and absf(position.y - interval.y) <= SUPPORT_EPSILON:
+				supported = true
+			if SolidGeometry.intersects_player(position, shape, PLAYER_RADIUS, PLAYER_HEIGHT):
+				blocked_by_shape = true
 			continue
 		for edge: Dictionary in shape.edges:
 			if not EdgeGeometry.bounds_overlap(edge, position, PLAYER_RADIUS, PLAYER_HEIGHT, SUPPORT_EPSILON):
@@ -238,10 +248,12 @@ func _validate_position(position: Vector4, label: String, warnings: PackedString
 			if EdgeGeometry.intersects_player(position, edge, PLAYER_RADIUS, PLAYER_HEIGHT):
 				blocked_by_edge = true
 	if not supported:
-		warnings.append("%s is not on a platform top. Place its feet on a supporting box or shape edge." % label)
+		warnings.append("%s is not on a platform top. Place its feet on a supporting box, shape edge, or solid face." % label)
 	if blocked:
 		warnings.append("%s overlaps a solid box. Leave room for the traveler's height and width." % label)
 	if blocked_by_edge:
 		warnings.append("%s overlaps a solid shape edge. Leave room for the traveler's height and width." % label)
+	if blocked_by_shape:
+		warnings.append("%s overlaps a solid shape. Leave room for the traveler's height and width." % label)
 	if position.y < -7.0:
 		warnings.append("%s is below the fall boundary (Y -7); the traveler will respawn there." % label)

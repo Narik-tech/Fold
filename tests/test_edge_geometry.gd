@@ -136,13 +136,18 @@ func _test_gameplay() -> void:
 		game.world._level.boxes[0].size = Vector4(4.2, 0.2, 0.2, 0.2)
 		game.world.shape_solids[0].edges = [Edges.make_edge(center - Vector4(2, 0, 0, 0), center + Vector4(2, 0, 0, 0), 0.2)]
 		game.world.update_slice(Vector4.ZERO, angle, 0, true, game.collected, 0, game.RADIUS)
-		_expect(not game.world.box_visuals[0].visible and not game.world.shape_fringes[0].visible,
-			"Turning hides contact silhouettes at either oblique angle")
+		_expect(game.world.box_visuals[0].visible and game.world.shape_fringes[0].visible,
+			"Turning keeps box and edge contacts visible while movement and jumping continue")
+		_expect(game.world._camera_boxes.is_empty() and game.world._camera_shapes[0] == null,
+			"Turning contact silhouettes do not obstruct the camera")
 		game.world.update_slice(Vector4.ZERO, angle, 0, false, game.collected, 0, game.RADIUS)
 		_expect(game.world.box_visuals[0].visible and game.world.shape_fringes[0].visible,
-			"Releasing a turn restores box and edge contact silhouettes at either oblique angle")
+			"Releasing a turn preserves box and edge contact silhouettes at either oblique angle")
 		_expect(game.world.box_visuals[0].material_override == game.world.materials.fringe and not game.world.shape_visuals[0].visible,
 			"Contact silhouettes do not become opaque solids")
+		game.world.update_slice(-normal * 0.3, angle, 0, true, game.collected, 0, game.RADIUS)
+		_expect(not game.world.box_visuals[0].visible and not game.world.shape_fringes[0].visible,
+			"Moving away during a turn hides solids beyond the player's contact range")
 	game._select_level(0)
 	_expect(game.world.shape_visuals.size() == 1, "Reload replaces shape visuals instead of accumulating them")
 	game.sound.stop_all()

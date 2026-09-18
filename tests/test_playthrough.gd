@@ -34,7 +34,7 @@ func _run() -> void:
 	_test_wall_obstruction()
 	_test_missing_bridge()
 	_test_respawn_retains_echoes()
-	_test_grounded_folding()
+	_test_airborne_folding()
 	_test_gate_requires_echoes()
 	_test_repeat_loading()
 	_test_oblique_wall_collision()
@@ -136,18 +136,21 @@ func _test_respawn_retains_echoes() -> void:
 	_expect(game.grounded and game.active_axis == 0 and is_zero_approx(game.angle), "Respawn restores a grounded Z view")
 
 
-func _test_grounded_folding() -> void:
+func _test_airborne_folding() -> void:
 	game._select_level(0)
 	_step(Vector2.ZERO, true)
 	_expect(not game.grounded, "Jump input launches the traveler")
 	var airborne_position: Vector4 = game.position4
-	_expect(not game.rotate_slice(1.0, DT), "Folding is rejected while airborne")
-	_expect(not game.rotating and game.active_axis == 0 and game.position4 == airborne_position, "Rejected fold preserves the current plane and position")
+	var airborne_speed: float = game.vertical_speed
+	_expect(game.rotate_slice(1.0, DT), "Folding can begin while airborne")
+	_expect(game.rotating and game.angle > 0.0 and game.position4 == airborne_position and game.vertical_speed == airborne_speed, "An airborne fold changes the view without teleporting or resetting jump momentum")
 	for unused in range(90):
+		game.rotate_slice(1.0, DT)
 		_step(Vector2.ZERO)
 		if game.grounded:
 			break
-	_expect(game.grounded, "The traveler lands after a stationary jump")
+	_expect(game.grounded and game.position4.is_equal_approx(game.level.start), "The traveler lands normally while continuously folding through the jump")
+	_expect(game.rotating and game.angle > PI / 4.0, "Folding continues through ascent, descent, and landing")
 	_expect(_fold_to(1), "A grounded traveler can rotate to the W view")
 	_expect(_fold_to(0), "Folding back restores the original view")
 
