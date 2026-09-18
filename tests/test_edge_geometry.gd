@@ -23,11 +23,24 @@ func _run() -> void:
 	_expect(Edges.intersects_player(Vector4(0, 1.5, 0, 0), diagonal), "The actual diagonal edge is solid")
 	var support := Edges.movement_interval(diagonal, Vector4(0, 0, 0, 0), 1)
 	_expect(is_equal_approx(support.y, 2.46999), "Sloped beam support comes from its exact swept edge")
+	_test_depth_movement(beam, diagonal)
 	_expect(Edges.slice_points(beam, Vector4(0, 0, 0, 1), 0).is_empty(), "Off-slice beam disappears")
 	_expect(not Edges.slice_points(beam, Vector4(0, 0, 0, 0.2), 0, 0.27).is_empty(), "Contact margin remains visible")
 	var hidden_diagonal := Edges.make_edge(Vector4.ZERO, Vector4(4, 0, 0, 4), 0.2)
 	_expect(Edges.slice_mesh([hidden_diagonal], Vector4(0, 0, 0, 2), 0, 0.27).get_surface_count() > 0,
 		"Diagonal contact margins remain visible around an existing opaque slice")
+	for angle in [-3.0 * PI / 4.0, -PI / 4.0, PI / 4.0, 3.0 * PI / 4.0]:
+		var normal := Vector4(0, 0, -sin(angle), cos(angle))
+		var center := Vector4(0, 1, 0, 0) + normal * 0.45
+		var near_beam := Edges.make_edge(center - Vector4(2, 0, 0, 0), center + Vector4(2, 0, 0, 0), 0.2)
+		_expect(Edges.intersects_player(Vector4.ZERO, near_beam), "An off-plane oblique beam touches the axis-aligned player")
+		_expect(Edges.slice_points(near_beam, Vector4.ZERO, angle).is_empty(), "The touching beam lies outside the mathematical plane")
+		_expect(_volume(Edges.slice_mesh([near_beam], Vector4.ZERO, angle, 0.27, Edges.BOTH_DEPTH_AXES)) > 0.001,
+			"Both depth axes contribute to contact silhouettes in every quadrant")
+		var far_center := Vector4(0, 1, 0, 0) + normal * 0.56
+		var far_beam := Edges.make_edge(far_center - Vector4(2, 0, 0, 0), far_center + Vector4(2, 0, 0, 0), 0.2)
+		_expect(Edges.slice_points(far_beam, Vector4.ZERO, angle, 0.27, Edges.BOTH_DEPTH_AXES).is_empty(),
+			"Solids beyond the player's oblique contact range remain hidden")
 	var mesh := Edges.slice_mesh([beam], Vector4.ZERO, 0)
 	_expect(absf(_volume(mesh) - 4.2 * 0.2 * 0.2) < 0.0001, "Cardinal beam mesh has the exact solid volume")
 	var slanted := Edges.make_edge(Vector4(-2, 0, -2, 0), Vector4(2, 0, 2, 0), 0.2)
@@ -45,6 +58,36 @@ func _run() -> void:
 	await _test_gameplay()
 	print("%s: %d edge geometry and gameplay checks." % ["PASS" if failures == 0 else "FAIL", checks])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_depth_movement(beam: Dictionary, diagonal: Dictionary) -> void:
+	for angle in [-PI / 4.0, PI / 4.0]:
+		var direction := Vector4(0, 0, cos(angle), sin(angle))
+		var start := direction * -2.0
+		var interval := Edges.depth_movement_interval(beam, start, angle)
+		var extent := 0.37 * sqrt(2.0)
+		_expect(absf(interval.x - (2.0 - extent)) < 0.0001 and absf(interval.y - (2.0 + extent)) < 0.0001,
+			"Oblique depth sweep finds both entry and exit without separating Z and W")
+		_expect(not Edges.intersects_player(start + direction * (interval.x - 0.001), beam)
+			and Edges.intersects_player(start + direction * (interval.x + 0.001), beam),
+			"The oblique entry interval agrees with the actual solid beam")
+		var standing := Edges.depth_movement_interval(beam, Vector4(0, 1.1, 0, 0), angle)
+		_expect(standing.x > standing.y, "Standing surface contact permits oblique depth movement")
+	var depth_diagonal := Edges.make_edge(Vector4(0, 1, -2, -2), Vector4(0, 1, 2, 2), 0.2)
+	var crossing := Edges.depth_movement_interval(depth_diagonal, Vector4.ZERO, -PI / 4.0)
+	_expect(absf(crossing.x + 0.37 * sqrt(2.0)) < 0.0001 and absf(crossing.y - 0.37 * sqrt(2.0)) < 0.0001,
+		"Crossing a slanted beam clips its exact supporting faces, not its bounding box")
+	var position := Vector4(0, 1.5, 0.2, 0)
+	for axis in [2, 3]:
+		var angle := 0.0 if axis == 2 else PI / 2.0
+		var old_interval := Edges.movement_interval(diagonal, position, axis)
+		var interval := Edges.depth_movement_interval(diagonal, position, angle)
+		_expect(absf(interval.x - (old_interval.x - position[axis])) < 0.0001
+			and absf(interval.y - (old_interval.y - position[axis])) < 0.0001,
+			"Cardinal depth sweep agrees with the existing single-axis solver")
+		var reversed := Edges.depth_movement_interval(diagonal, position, angle + PI)
+		_expect(absf(reversed.x + interval.y) < 0.0001 and absf(reversed.y + interval.x) < 0.0001,
+			"Reversing the view reverses the signed collision interval")
 
 
 func _volume(mesh: ArrayMesh) -> float:
@@ -86,6 +129,20 @@ func _test_gameplay() -> void:
 	_expect(absf(game.position4.y - 3.1) < 0.001 and game.grounded, "Player can land and stand on a solid edge")
 	game.world.update_slice(game.position4, 0.4, 0, true, game.collected, 0, game.RADIUS)
 	_expect(game.world.shape_visuals.size() == 1, "One editable shape owns one runtime solid mesh")
+	for angle in [-PI / 4.0, PI / 4.0]:
+		var normal := Vector4(0, 0, -sin(angle), cos(angle))
+		var center := Vector4(0, 1, 0, 0) + normal * 0.45
+		game.world._level.boxes[0].center = center
+		game.world._level.boxes[0].size = Vector4(4.2, 0.2, 0.2, 0.2)
+		game.world.shape_solids[0].edges = [Edges.make_edge(center - Vector4(2, 0, 0, 0), center + Vector4(2, 0, 0, 0), 0.2)]
+		game.world.update_slice(Vector4.ZERO, angle, 0, true, game.collected, 0, game.RADIUS)
+		_expect(not game.world.box_visuals[0].visible and not game.world.shape_fringes[0].visible,
+			"Turning hides contact silhouettes at either oblique angle")
+		game.world.update_slice(Vector4.ZERO, angle, 0, false, game.collected, 0, game.RADIUS)
+		_expect(game.world.box_visuals[0].visible and game.world.shape_fringes[0].visible,
+			"Releasing a turn restores box and edge contact silhouettes at either oblique angle")
+		_expect(game.world.box_visuals[0].material_override == game.world.materials.fringe and not game.world.shape_visuals[0].visible,
+			"Contact silhouettes do not become opaque solids")
 	game._select_level(0)
 	_expect(game.world.shape_visuals.size() == 1, "Reload replaces shape visuals instead of accumulating them")
 	game.sound.stop_all()

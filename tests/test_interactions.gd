@@ -23,6 +23,7 @@ func _run() -> void:
 	_test_title_and_mute()
 	_test_pause_and_echo()
 	_test_fold_and_jump()
+	_test_rotation_timing_and_movement()
 	_test_restart_and_respawn()
 	_test_completion()
 	# Synchronous input checks finish before the next real audio mix tick.
@@ -40,8 +41,10 @@ func _run() -> void:
 
 func _test_title_and_mute() -> void:
 	_expect(not game.started and game.hud._title_overlay.visible, "Game begins at the title")
-	_tap(KEY_Q)
-	_expect(not game.rotating, "Fold input cannot leave the title")
+	_key_event(KEY_Q, true)
+	game._physics_process(0.25)
+	_key_event(KEY_Q, false)
+	_expect(not game.rotating and is_zero_approx(game.angle), "Held slice input cannot leave the title")
 	_tap(KEY_M)
 	_expect(game.muted and game.sound.muted, "Mute works on the title")
 	_echo(KEY_M)
@@ -58,8 +61,9 @@ func _test_pause_and_echo() -> void:
 	_expect(game.paused, "Holding Escape does not unpause")
 	var before: Vector4 = game.position4
 	_tap(KEY_SPACE)
-	_tap(KEY_Q)
+	_key_event(KEY_Q, true)
 	game._physics_process(0.5)
+	_key_event(KEY_Q, false)
 	_expect(game.position4 == before and not game.rotating and is_zero_approx(game.jump_buffer), "Pause ignores jump and fold and freezes physics")
 	_tap(KEY_M)
 	_expect(not game.muted and not game.sound.muted, "Mute can be toggled while paused")
@@ -75,22 +79,54 @@ func _test_pause_and_echo() -> void:
 func _test_fold_and_jump() -> void:
 	var before: Vector4 = game.position4
 	_tap(KEY_Q)
-	_expect(game.rotating and game.active_axis == 0, "Q begins a grounded fold")
-	game._physics_process(0.23)
-	var elapsed: float = game.rotation_elapsed
+	game._physics_process(DT)
+	_expect(not game.rotating and is_zero_approx(game.angle), "A released tap does not start an automatic fold")
+	_key_event(KEY_Q, true)
+	_key_event(KEY_D, true)
+	game._physics_process(0.2)
+	_expect(game.rotating and is_equal_approx(game.angle, -PI * 0.1), "Holding Q gradually turns the slice in the negative direction")
+	_expect(game.position4 == before, "Held slice rotation pauses walking even when a movement key is held")
+	_key_event(KEY_D, false)
+	game._physics_process(0.1)
+	_expect(is_equal_approx(game.angle, -PI * 0.15), "Q keeps turning on subsequent frames without keyboard repeat")
 	var partial_angle: float = game.angle
-	_echo(KEY_Q)
-	_expect(is_equal_approx(game.rotation_elapsed, elapsed), "Key repeat does not restart a fold")
+	_key_event(KEY_Q, true, true)
+	_expect(is_equal_approx(game.angle, partial_angle), "Keyboard repeat does not add an immediate angle step")
 	_tap(KEY_ESCAPE)
 	game._physics_process(0.5)
-	_expect(game.rotating and is_equal_approx(game.angle, partial_angle), "Pause freezes a partial fold")
+	_expect(is_equal_approx(game.angle, partial_angle), "Pause freezes a held partial rotation")
+	_key_event(KEY_Q, false)
 	_tap(KEY_ESCAPE)
-	game._physics_process(0.5)
-	_expect(not game.rotating and game.active_axis == 1 and is_equal_approx(game.angle, PI / 2.0), "Resumed fold reaches the W view")
-	_expect(game.position4 == before, "Folding preserves all four world coordinates")
-	_tap(KEY_E)
-	game._physics_process(0.71)
-	_expect(not game.rotating and game.active_axis == 0 and is_zero_approx(game.angle), "E folds back to the Z view")
+	game._physics_process(DT)
+	_expect(not game.rotating and is_equal_approx(game.angle, partial_angle), "Releasing Q while paused leaves the slice stopped after resuming")
+	_key_event(KEY_E, true)
+	game._physics_process(0.1)
+	_expect(game.rotating and is_equal_approx(game.angle, partial_angle + PI * 0.05), "Holding E reverses the rotation direction")
+	partial_angle = game.angle
+	_key_event(KEY_Q, true)
+	game._physics_process(0.1)
+	_expect(not game.rotating and is_equal_approx(game.angle, partial_angle), "Holding Q and E together cancels rotation")
+	_key_event(KEY_E, false)
+	game._physics_process(0.1)
+	_expect(game.rotating and is_equal_approx(game.angle, partial_angle - PI * 0.05), "Releasing E while holding Q resumes negative rotation")
+	partial_angle = game.angle
+	_key_event(KEY_Q, false)
+	game._physics_process(DT)
+	_expect(not game.rotating and is_equal_approx(game.angle, partial_angle), "Releasing both keys stops at the current intermediate angle")
+	_expect(game.position4 == before, "Rotating the slice preserves all four world coordinates")
+	game._restart()
+	_key_event(KEY_E, true)
+	game._physics_process(1.2)
+	_expect(game.rotating and is_equal_approx(game.angle, PI * 0.6), "Holding E continues beyond the W view without snapping")
+	game._physics_process(1.2)
+	_expect(game.rotating and is_equal_approx(game.angle, -PI * 0.8), "Held rotation wraps smoothly through a half turn")
+	_tap(KEY_SPACE)
+	game._physics_process(0.2)
+	_expect(game.grounded and is_zero_approx(game.jump_buffer), "A buffered jump expires while rotation holds the traveler in place")
+	_key_event(KEY_E, false)
+	game._physics_process(DT)
+	_expect(game.grounded and is_zero_approx(game.vertical_speed), "Releasing rotation does not trigger an expired jump")
+	game._restart()
 	_tap(KEY_SPACE)
 	_expect(game.jump_buffer > 0.1, "Space fills the jump buffer")
 	game.jump_buffer = 0.03
@@ -98,8 +134,30 @@ func _test_fold_and_jump() -> void:
 	_expect(is_equal_approx(game.jump_buffer, 0.03), "Keyboard repeat does not refill the jump buffer")
 	game._physics_process(DT)
 	_expect(not game.grounded and game.vertical_speed > 0.0, "Buffered keyboard jump launches the player")
-	_tap(KEY_Q)
-	_expect(not game.rotating, "Keyboard fold is rejected in the air")
+	_key_event(KEY_Q, true)
+	game._physics_process(DT)
+	_key_event(KEY_Q, false)
+	_expect(not game.rotating and is_zero_approx(game.angle), "Held slice input is rejected in the air")
+
+
+func _test_rotation_timing_and_movement() -> void:
+	game._restart()
+	game.rotate_slice(1.0, 0.5)
+	var coarse_angle: float = game.angle
+	game._restart()
+	for unused in range(60):
+		game.rotate_slice(1.0, 0.5 / 60.0)
+	_expect(is_equal_approx(game.angle, coarse_angle) and is_equal_approx(game.angle, PI / 4.0), "The same hold duration produces the same angle at different frame rates")
+	for test_angle: float in [-3.0 * PI / 4.0, -PI / 4.0, PI / 4.0, 3.0 * PI / 4.0]:
+		game._restart()
+		game.rotate_slice(signf(test_angle), absf(test_angle) / (PI / 2.0))
+		game.rotate_slice(0.0, DT)
+		var before: Vector4 = game.position4
+		game.simulate_motion(Vector2.DOWN, 0.1)
+		var displacement: Vector4 = game.position4 - before
+		var travel: float = game.SPEED * 0.1
+		_expect(is_equal_approx(displacement.z, cos(test_angle) * travel) and is_equal_approx(displacement.w, sin(test_angle) * travel), "Movement follows the signed intermediate slice at angle %.2f" % test_angle)
+		_expect(is_equal_approx(Vector2(displacement.z, displacement.w).length(), travel), "Intermediate slice movement preserves travel speed at angle %.2f" % test_angle)
 
 
 func _test_restart_and_respawn() -> void:
@@ -111,9 +169,10 @@ func _test_restart_and_respawn() -> void:
 	_tap(KEY_H)
 	_echo(KEY_R)
 	_expect(game.hint_index == 1, "Holding R does not repeatedly reload the level")
-	_tap(KEY_Q)
+	_key_event(KEY_Q, true)
 	game._physics_process(0.2)
 	_tap(KEY_R)
+	_key_event(KEY_Q, false)
 	_expect(not game.rotating and is_zero_approx(game.angle) and game.active_axis == 0, "Restart cancels an in-progress fold")
 	_tap(KEY_ESCAPE)
 	game.hud.restart_requested.emit()
@@ -136,8 +195,9 @@ func _test_completion() -> void:
 	_tap(KEY_ESCAPE)
 	_expect(not game.paused, "Escape does not put a pause menu over completion")
 	var before: Vector4 = game.position4
-	_tap(KEY_Q)
+	_key_event(KEY_Q, true)
 	game._physics_process(0.7)
+	_key_event(KEY_Q, false)
 	_expect(game.position4 == before and not game.rotating, "Completed levels reject movement and folding")
 	_tap(KEY_ENTER)
 	_expect(game.level_index == 1 and not game.completed and not game.hud._completion_overlay.visible, "Enter advances from completion to the next garden")
@@ -161,7 +221,8 @@ func _key_event(key: Key, pressed: bool, echo: bool = false) -> void:
 	event.keycode = key
 	event.pressed = pressed
 	event.echo = echo
-	root.push_input(event)
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
 
 
 func _expect(condition: bool, message: String) -> void:

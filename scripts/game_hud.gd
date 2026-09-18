@@ -217,7 +217,7 @@ func _build_footer() -> void:
 	controls.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_add_key_group(controls, "W A S D", "move")
 	_add_key_group(controls, "SPACE", "jump")
-	_add_key_group(controls, "Q / E", "fold")
+	_add_key_group(controls, "Q − / E +", "hold to fold")
 	_add_key_group(controls, "R", "restart")
 	_add_key_group(controls, "H", "hint")
 	_add_key_group(controls, "M", "sound")
@@ -260,7 +260,7 @@ func _build_orientation() -> void:
 	_orientation.custom_minimum_size = Vector2(132, 127)
 	_orientation.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(_orientation)
-	_slice_label = _label("XYZ  ↔  XYW", 12, TEAL)
+	_slice_label = _label("XYZ   /   0.0°", 12, TEAL)
 	_slice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_slice_label)
 	_coordinate_label = _label("X +0.0   Y +0.0\nZ +0.0   W +0.0", 11, MUTED)
@@ -337,7 +337,7 @@ func _build_title() -> void:
 	start.pressed.connect(func() -> void: start_requested.emit())
 	row.add_child(start)
 	_gap(box, 13)
-	_center_label(box, "W A S D  move     ·     SPACE  jump     ·     Q / E  fold", 11, MUTED)
+	_center_label(box, "W A S D  move     ·     SPACE  jump     ·     Hold Q − / E + to fold", 11, MUTED)
 	_center_label(box, "THREE SMALL GARDENS  /  ONE EXTRA DIMENSION", 9, Color(0.55, 0.68, 0.62, 0.8))
 	var footnote := _label("An original spatial puzzle", 10, MUTED)
 	_title_overlay.add_child(footnote)
@@ -436,8 +436,13 @@ func update_state(collected: int, total: int, angle: float, pos4: Vector4, rotat
 	_orientation.hidden_coordinate = pos4.w
 	_orientation.is_rotating = rotating
 	_orientation.queue_redraw()
-	var w_view: bool = absf(sin(angle)) > absf(cos(angle))
-	_slice_label.text = "FOLDING…" if rotating else ("XYW   /   Z HIDDEN" if w_view else "XYZ   /   W HIDDEN")
+	var slice_name := "MIXED"
+	if absf(sin(angle)) < 0.00001:
+		slice_name = "XYZ"
+	elif absf(cos(angle)) < 0.00001:
+		slice_name = "XYW"
+	var degrees := wrapf(snappedf(rad_to_deg(angle), 0.1), 0.0, 360.0)
+	_slice_label.text = "%s   /   %.1f°" % [slice_name, degrees]
 	_coordinate_label.text = "X %+.1f   Y %+.1f\nZ %+.1f   W %+.1f" % [pos4.x, pos4.y, pos4.z, pos4.w]
 
 func show_toast(message: String) -> void:

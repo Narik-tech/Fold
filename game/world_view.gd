@@ -78,12 +78,12 @@ func load_level(data: Dictionary, decoration_seed: int = 0) -> void:
 	_build_decorations(decoration_seed)
 
 
-func update_slice(position4: Vector4, angle: float, active_axis: int, rotating: bool,
+func update_slice(position4: Vector4, angle: float, _active_axis: int, rotating: bool,
 		collected: Array[bool], clock: float, player_radius: float) -> void:
 	if _level.is_empty():
 		return
 	var visible_player_depth := position4.z * cos(angle) + position4.w * sin(angle)
-	_update_shape_slices(position4, angle, active_axis, rotating, player_radius)
+	_update_shape_slices(position4, angle, rotating, player_radius)
 	for i in range(box_visuals.size()):
 		var box: Dictionary = _level.boxes[i]
 		var section: Dictionary = Geometry.slice_box(box.center, box.size, position4, angle)
@@ -93,8 +93,9 @@ func update_slice(position4: Vector4, angle: float, active_axis: int, rotating: 
 		# Show those contact margins as translucent silhouettes rather than letting
 		# them become invisible walls or invisible support at a slice boundary.
 		if not section.visible and not rotating:
-			var margin_size: Vector4 = box.size
-			margin_size[3 if active_axis == 0 else 2] += player_radius * 2.0
+			# The traveler's collision footprint stays axis-aligned in Z and W,
+			# so both axes contribute to contact at an oblique slice angle.
+			var margin_size: Vector4 = box.size + Vector4(0, 0, player_radius * 2.0, player_radius * 2.0)
 			section = Geometry.slice_box(box.center, margin_size, position4, angle)
 			is_fringe = section.visible
 		visual.material_override = materials.fringe if is_fringe else materials.get(box.kind, materials.stone)
@@ -126,10 +127,10 @@ func update_slice(position4: Vector4, angle: float, active_axis: int, rotating: 
 		portal_inner.scale.x = 0.92 + sin(clock * 2.5) * 0.08
 
 
-func _update_shape_slices(position4: Vector4, angle: float, active_axis: int,
+func _update_shape_slices(position4: Vector4, angle: float,
 		rotating: bool, player_radius: float) -> void:
 	var hidden := -position4.z * sin(angle) + position4.w * cos(angle)
-	var key := Vector4(hidden, angle, 0.0 if rotating else player_radius, float(active_axis))
+	var key := Vector4(hidden, angle, 0.0 if rotating else player_radius, 0.0)
 	if _shape_slice_key.is_equal_approx(key):
 		return
 	_shape_slice_key = key
@@ -140,7 +141,7 @@ func _update_shape_slices(position4: Vector4, angle: float, active_axis: int,
 		shape_visuals[index].visible = mesh.get_surface_count() > 0
 		shape_fringes[index].visible = false
 		if not rotating:
-			var fringe := Edges.slice_mesh(edges, position4, angle, player_radius, 3 if active_axis == 0 else 2)
+			var fringe := Edges.slice_mesh(edges, position4, angle, player_radius, Edges.BOTH_DEPTH_AXES)
 			shape_fringes[index].mesh = fringe
 			shape_fringes[index].visible = fringe.get_surface_count() > 0
 

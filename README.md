@@ -1,6 +1,6 @@
 # FOLD — The Quiet Dimension
 
-A playable, original four-dimensional puzzle platformer made in Godot. Explore three floating gardens, collect their echoes, and find the amber gate. Folding the view exchanges Z and W, exposing paths that lie outside your current three-dimensional slice.
+A playable, original four-dimensional puzzle platformer made in Godot. Explore three floating gardens, collect their echoes, and find the amber gate. Folding continuously rotates the view through Z and W, exposing paths that lie outside your current three-dimensional slice.
 
 Inspired by the spatial navigation described by [Miegakure](https://miegakure.com/). FOLD has its own levels, visuals, character, and synthesized audio.
 
@@ -16,7 +16,7 @@ Alternatively, import **project.godot** into Godot 4.6 or newer and press **F5**
 | --- | --- |
 | WASD / arrow keys | Move relative to the camera |
 | Space | Jump |
-| Q or E | Fold / unfold between XYZ and XYW |
+| Hold Q / E | Rotate the slice in opposite directions (Q decreases the angle, E increases it) |
 | H | Show the next hint |
 | R | Restart the current garden |
 | Escape | Pause / resume |
@@ -24,7 +24,7 @@ Alternatively, import **project.godot** into Godot 4.6 or newer and press **F5**
 | Enter | Start / continue after completion |
 | 01 / 02 / 03 buttons | Choose a garden |
 
-Fold while standing on a surface. Find every echo in the garden, then enter its gate. Falling returns you to the start and preserves collected echoes; restarting clears the garden. The orientation panel shows the visible axes and your coordinates. Each hint becomes more explicit when you press H again.
+Fold while standing on a surface. Hold Q or E to rotate at 90° per second, and release to keep any slice angle. Rotation continues through a full circle. Find every echo in the garden, then enter its gate. Falling returns you to the start and preserves collected echoes; restarting clears the garden. The orientation panel shows your slice angle, identifies mixed Z/W views, and displays your coordinates. Each hint becomes more explicit when you press H again.
 
 ## Gardens
 
@@ -36,9 +36,9 @@ These are three short puzzle chambers rather than a full campaign. Progress is k
 
 ## How the fourth dimension works
 
-Every solid, echo, and player position lives in `(x, y, z, w)`. Y is height. X is always available. In the normal view, movement changes Z and preserves W; folding swaps those roles. W is a spatial coordinate, not time or a separate level.
+Every solid, echo, and player position lives in `(x, y, z, w)`. Y is height. X is always available. At 0°, depth movement changes Z and preserves W; at 90°, it changes W and preserves Z. Intermediate views move through a blend of Z and W, following the displayed slice. W is a spatial coordinate, not time or a separate level.
 
-The renderer intersects each 4D solid with a 3D hyperplane passing through the player. Boxes and the solid edge beams of regular 4D shapes have exact cross-sections at every intermediate Z–W fold angle. Collision remains in 4D, so changing the view never teleports through a solid. Walking pauses during the 0.7-second fold, and folds require ground contact.
+The renderer intersects each 4D solid with a 3D hyperplane passing through the player. Boxes and the solid edge beams of regular 4D shapes have exact cross-sections at every Z–W fold angle. Collision remains in 4D, so changing the view never teleports through a solid. Walking pauses while you rotate the slice, and folding requires ground contact. Releasing Q/E stops immediately without snapping to an axis.
 
 The prototype supports one rotation plane, axis-aligned 4D boxes, scalable regular 4D edge frames, and a finite 4D player collision box. The 5-cell, tesseract, 16-cell, 24-cell, 120-cell, and 600-cell have solid edges with open faces and interiors that the player can move through. Faint silhouettes mark nearby solids touching the traveler's thickness just outside the visible slice. Trees are decorative cross-sections and have no collision. This is a focused implementation of the slice-navigation mechanic, not a general 4D physics engine.
 

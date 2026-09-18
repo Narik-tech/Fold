@@ -6,6 +6,7 @@ extends RefCounted
 
 const Polytopes = preload("res://scripts/polytope_geometry.gd")
 const EPS := 0.00001
+const BOTH_DEPTH_AXES := -1
 
 
 static func compile_shapes(shapes: Array) -> Array[Dictionary]:
@@ -61,6 +62,35 @@ static func movement_interval(edge: Dictionary, position: Vector4, axis: int,
 		maxf(first, last) + half[axis] + (0.0 if axis == 1 else radius))
 
 
+## Forbidden signed travel interval along the view's depth direction. Clip the
+## player's center ray against the exact segment + expanded player-box volume.
+## Z and W advance together, preserving the hidden coordinate even at contact.
+static func depth_movement_interval(edge: Dictionary, position: Vector4, angle: float,
+		radius: float = 0.27, height: float = 1.25) -> Vector2:
+	var center := position + Vector4(0, height * 0.5, 0, 0)
+	var travel := Vector4(0, 0, cos(angle), sin(angle))
+	var half: Vector4 = edge.half + Vector4(radius, height * 0.5, radius, radius)
+	var interval := Vector2(-INF, INF)
+	for normal in _face_normals(edge.b - edge.a):
+		var bound := maxf(normal.dot(edge.a), normal.dot(edge.b)) + normal.abs().dot(half)
+		var clearance := bound - normal.dot(center)
+		var speed := normal.dot(travel)
+		if absf(speed) < EPS:
+			# Tangential surface contact (including standing on a beam) does
+			# not penetrate the solid and must not block depth movement.
+			if clearance <= EPS:
+				return Vector2(INF, -INF)
+			continue
+		var contact := clearance / speed
+		if speed > 0.0:
+			interval.y = minf(interval.y, contact)
+		else:
+			interval.x = maxf(interval.x, contact)
+		if interval.y - interval.x <= EPS:
+			return Vector2(INF, -INF)
+	return interval
+
+
 static func intersects_player(position: Vector4, edge: Dictionary,
 		radius: float = 0.27, height: float = 1.25) -> bool:
 	var interval := movement_interval(edge, position, 0, radius, height)
@@ -77,12 +107,13 @@ static func bounds_overlap(bounds: Dictionary, position: Vector4, radius: float,
 
 ## Slice the convex extrusion exactly. Its boundary edges are a subset of
 ## two 4D cubes' edges plus the 16 joins between corresponding cube corners.
+## BOTH_DEPTH_AXES expands the solid by the player's axis-aligned Z/W footprint,
+## giving contact silhouettes at any angle. A specific axis retains legacy margins.
 static func slice_points(edge: Dictionary, pivot: Vector4, angle: float,
 		margin: float = 0.0, hidden_axis: int = 3) -> Array[Vector4]:
 	var normal := Vector4(0, 0, -sin(angle), cos(angle))
 	var offset := normal.dot(pivot)
-	var half: Vector4 = edge.half
-	half[hidden_axis] += margin
+	var half := _margin_half(edge.half, margin, hidden_axis)
 	var a: Vector4 = edge.a
 	var b: Vector4 = edge.b
 	var extent := absf(normal.z) * half.z + absf(normal.w) * half.w
@@ -111,6 +142,15 @@ static func slice_points(edge: Dictionary, pivot: Vector4, angle: float,
 				if d0 * d1 < 0.0:
 					_append_unique(points, first.lerp(last, d0 / (d0 - d1)))
 	return points
+
+
+static func _margin_half(half: Vector4, margin: float, hidden_axis: int) -> Vector4:
+	if hidden_axis == BOTH_DEPTH_AXES:
+		half.z += margin
+		half.w += margin
+	else:
+		half[hidden_axis] += margin
+	return half
 
 
 static func _append_unique(points: Array[Vector4], point: Vector4) -> void:
@@ -150,7 +190,7 @@ static func slice_mesh(edges: Array, pivot: Vector4, angle: float,
 			var direction: Vector4 = edge.b - edge.a
 			var hidden_change := -direction.z * sin(angle) + direction.w * cos(angle)
 			# A diagonal edge can extend past its opaque slice into the player's
-			# hidden-axis thickness. Show that margin even if part is already solid.
+			# depth footprint. Show that margin even if part is already solid.
 			if absf(hidden_change) < EPS and not slice_points(edge, pivot, angle).is_empty():
 				continue
 		var points := slice_points(edge, pivot, angle, margin, hidden_axis)
@@ -169,8 +209,7 @@ static func slice_mesh(edges: Array, pivot: Vector4, angle: float,
 
 static func _append_faces(edge: Dictionary, points: Array[Vector4], angle: float,
 		margin: float, hidden_axis: int, vertices: PackedVector3Array, normals: PackedVector3Array) -> void:
-	var half: Vector4 = edge.half
-	half[hidden_axis] += margin
+	var half := _margin_half(edge.half, margin, hidden_axis)
 	var rendered_faces: Array[Vector4] = []
 	for normal4 in _face_normals(edge.b - edge.a):
 		var normal := Vector3(normal4.x, normal4.y, normal4.z * cos(angle) + normal4.w * sin(angle))

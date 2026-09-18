@@ -36,6 +36,7 @@ func _run() -> void:
 	_test_grounded_folding()
 	_test_gate_requires_echoes()
 	_test_repeat_loading()
+	_test_oblique_wall_collision()
 	# Let the audio mix thread release stopped playback after this accelerated
 	# run, which otherwise quits within a single real frame of cleanup.
 	game.sound.stop_all()
@@ -115,14 +116,14 @@ func _test_grounded_folding() -> void:
 	_step(Vector2.ZERO, true)
 	_expect(not game.grounded, "Jump input launches the traveler")
 	var airborne_position: Vector4 = game.position4
-	_expect(not game.request_fold(), "Folding is rejected while airborne")
+	_expect(not game.rotate_slice(1.0, DT), "Folding is rejected while airborne")
 	_expect(not game.rotating and game.active_axis == 0 and game.position4 == airborne_position, "Rejected fold preserves the current plane and position")
 	for unused in range(90):
 		_step(Vector2.ZERO)
 		if game.grounded:
 			break
 	_expect(game.grounded, "The traveler lands after a stationary jump")
-	_expect(_fold_to(1), "A grounded traveler can complete the fold animation")
+	_expect(_fold_to(1), "A grounded traveler can rotate to the W view")
 	_expect(_fold_to(0), "Folding back restores the original view")
 
 
@@ -155,6 +156,36 @@ func _test_repeat_loading() -> void:
 			_expect(game.position4 == game.level.start and game.grounded and game.active_axis == 0 and not game.rotating, "Reload %d/%d resets traversal state" % [iteration, index])
 
 
+func _test_oblique_wall_collision() -> void:
+	for test_angle: float in [-PI / 4.0, PI / 4.0]:
+		for direction: float in [-1.0, 1.0]:
+			var fixture: FoldLevel = FoldLevel.create_default()
+			fixture.start = Vector4(-4.0, 0.0, 0.2, -0.4)
+			var wall := FoldBox.new()
+			wall.center = Vector4(0.0, 1.5, direction * 2.0, 0.0)
+			wall.size = Vector4(12.0, 3.0, 1.0, 8.0)
+			wall.kind = "wall"
+			fixture.boxes.append(wall)
+			if not _expect(game.load_custom_level(fixture), "Oblique collision fixture loads"):
+				continue
+			game.rotate_slice(signf(test_angle), absf(test_angle) / (PI / 2.0))
+			game.rotate_slice(0.0, DT)
+			var hidden_before: float = -sin(test_angle) * game.position4.z + cos(test_angle) * game.position4.w
+			# The first large step reaches the wall; later frames must remain on
+			# the same slice rather than sliding along the hidden dimension.
+			game.simulate_motion(Vector2(0.0, direction), 0.8)
+			for unused in range(30):
+				_step(Vector2(0.0, direction))
+			var hidden_after: float = -sin(test_angle) * game.position4.z + cos(test_angle) * game.position4.w
+			_expect(is_equal_approx(game.position4.z, direction * (1.5 - game.RADIUS)), "Oblique movement stops at the wall face for angle %.2f direction %.0f" % [test_angle, direction])
+			_expect(is_equal_approx(hidden_after, hidden_before) and game.grounded, "Wall contact preserves the hidden slice coordinate for angle %.2f direction %.0f" % [test_angle, direction])
+			var contact: Vector4 = game.position4
+			for unused in range(10):
+				_step(Vector2(0.0, -direction))
+			hidden_after = -sin(test_angle) * game.position4.z + cos(test_angle) * game.position4.w
+			_expect((game.position4.z - contact.z) * direction < -0.4 and is_equal_approx(hidden_after, hidden_before), "Reversing away from an oblique wall remains on the slice for angle %.2f direction %.0f" % [test_angle, direction])
+
+
 func _move_to(target: Vector4, jump: bool, label: String) -> bool:
 	var difference: Vector4 = target - game.position4
 	if absf(difference.z) > POSITION_EPSILON:
@@ -179,18 +210,20 @@ func _move_to(target: Vector4, jump: bool, label: String) -> bool:
 
 
 func _fold_to(axis: int) -> bool:
-	if game.active_axis == axis:
+	var target_angle: float = PI / 2.0 if axis == 1 else 0.0
+	if is_equal_approx(game.angle, target_angle):
 		return true
 	if not _expect(game.grounded, "Plane changes begin on solid ground"):
 		return false
 	var before: Vector4 = game.position4
-	if not game.request_fold():
-		return false
-	for unused in range(60):
-		game._physics_process(DT)
-		if not game.rotating:
+	for unused in range(120):
+		var remaining: float = target_angle - game.angle
+		if is_zero_approx(remaining):
 			break
-	return _expect(not game.rotating and game.active_axis == axis and before == game.position4, "Animated fold changes the visible axis while preserving all four coordinates")
+		if not game.rotate_slice(signf(remaining), minf(DT, absf(remaining) / (PI / 2.0))):
+			return false
+	game.rotate_slice(0.0, DT)
+	return _expect(not game.rotating and is_equal_approx(game.angle, target_angle) and game.active_axis == axis and before == game.position4, "Continuous rotation reaches the requested slice while preserving all four coordinates")
 
 
 func _step(motion: Vector2, jump: bool = false) -> void:

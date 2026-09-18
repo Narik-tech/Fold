@@ -84,15 +84,17 @@ func _move_to(target: Vector4) -> bool:
 		desired_axis = 1
 	elif absf(difference.z) > EPSILON:
 		desired_axis = 0
-	if game.active_axis != desired_axis:
+	var target_angle: float = PI / 2.0 if desired_axis == 1 else 0.0
+	if not is_equal_approx(game.angle, target_angle):
 		var before: Vector4 = game.position4
-		if not game.request_fold():
-			return false
-		for unused in range(60):
-			game._physics_process(DT)
-			if not game.rotating:
+		for unused in range(120):
+			var remaining: float = target_angle - game.angle
+			if is_zero_approx(remaining):
 				break
-		if game.rotating or game.active_axis != desired_axis or game.position4 != before:
+			if not game.rotate_slice(signf(remaining), minf(DT, absf(remaining) / (PI / 2.0))):
+				return false
+		game.rotate_slice(0.0, DT)
+		if game.rotating or not is_equal_approx(game.angle, target_angle) or game.active_axis != desired_axis or game.position4 != before:
 			return false
 	for unused in range(300):
 		difference = target - game.position4

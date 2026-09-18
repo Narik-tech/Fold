@@ -7,6 +7,7 @@ const Geometry = preload("res://scripts/slice_geometry.gd")
 const Edges = preload("res://scripts/edge_geometry.gd")
 const Levels = preload("res://scripts/level_data.gd")
 const SPEED: float = 4.2
+const ROTATION_SPEED: float = PI / 2.0
 const GRAVITY: float = 18.0
 const JUMP_SPEED: float = 7.2
 const RADIUS: float = 0.27
@@ -31,9 +32,6 @@ var jump_buffer: float = 0.0
 var active_axis: int = 0
 var angle: float = 0.0
 var rotating: bool = false
-var rotation_elapsed: float = 0.0
-var rotation_from: float = 0.0
-var rotation_to: float = 0.0
 var started: bool = false
 var paused: bool = false
 var completed: bool = false
@@ -124,23 +122,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event is InputEventKey and event.pressed and event.keycode == KEY_ENTER:
 			_next_level()
 		return
-	if event.is_action_pressed("fold"):
-		request_fold()
+	if (event.is_action_pressed("fold_negative") or event.is_action_pressed("fold_positive")) and not grounded:
+		hud.show_toast("Touch down before folding.")
 	if event.is_action_pressed("jump"):
 		jump_buffer = 0.15
 
 func _physics_process(delta: float) -> void:
 	if not started or paused or completed:
 		return
-	if rotating:
-		rotation_elapsed += delta
-		var t := clampf(rotation_elapsed / 0.7, 0.0, 1.0)
-		var ease_t := t * t * (3.0 - 2.0 * t)
-		angle = lerpf(rotation_from, rotation_to, ease_t)
-		if t >= 1.0:
-			rotating = false
-			angle = rotation_to
-			active_axis = 1 if angle > 0.5 else 0
+	if rotate_slice(Input.get_axis("fold_negative", "fold_positive"), delta):
+		jump_buffer = maxf(0.0, jump_buffer - delta)
 		return
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	# Match the orthographic camera: W goes up-screen, D goes right-screen.
@@ -168,14 +159,60 @@ func simulate_motion(motion: Vector2, delta: float, jump: bool = false) -> void:
 		motion = motion.normalized()
 	var before := position4
 	_move_axis(0, motion.x * SPEED * delta)
-	_move_axis(2 if active_axis == 0 else 3, motion.y * SPEED * delta)
+	# View depth follows the current Z-W direction, including oblique/reversed slices.
+	_move_depth(motion.y * SPEED * delta)
 	vertical_speed -= GRAVITY * delta
 	grounded = false
 	_move_axis(1, vertical_speed * delta)
-	distance_walked += Vector2(position4.x - before.x, (position4.z - before.z) + (position4.w - before.w)).length()
+	distance_walked += Vector3(position4.x - before.x, position4.z - before.z, position4.w - before.w).length()
 	if position4.y < -7.0:
 		_respawn()
 	_check_objectives()
+
+## Sweep along the view's depth as one vector so a wall cannot push movement
+## into the hidden dimension. X and vertical movement still slide independently.
+func _move_depth(amount: float) -> void:
+	if is_zero_approx(amount):
+		return
+	var direction := Vector4(0.0, 0.0, cos(angle), sin(angle))
+	var travel := amount
+	for box: Dictionary in level.get("boxes", []):
+		travel = _clip_depth_motion(travel, _box_depth_interval(box, direction))
+	for shape: Dictionary in shape_solids:
+		if not Edges.bounds_overlap(shape, position4, RADIUS, HEIGHT, absf(travel)):
+			continue
+		for edge: Dictionary in shape.edges:
+			if Edges.bounds_overlap(edge, position4, RADIUS, HEIGHT, absf(travel)):
+				travel = _clip_depth_motion(travel, Edges.depth_movement_interval(edge, position4, angle, RADIUS, HEIGHT))
+	position4 += direction * travel
+
+func _box_depth_interval(box: Dictionary, direction: Vector4) -> Vector2:
+	var center: Vector4 = box.center
+	var half: Vector4 = box.size * 0.5
+	if absf(position4.x - center.x) >= half.x + RADIUS - Geometry.EPSILON or position4.y >= center.y + half.y - Geometry.EPSILON or position4.y + HEIGHT <= center.y - half.y + Geometry.EPSILON:
+		return Vector2(INF, -INF)
+	var interval := Vector2(-INF, INF)
+	for axis in [2, 3]:
+		var low := center[axis] - half[axis] - RADIUS
+		var high := center[axis] + half[axis] + RADIUS
+		if absf(direction[axis]) < Geometry.EPSILON:
+			if position4[axis] <= low + Geometry.EPSILON or position4[axis] >= high - Geometry.EPSILON:
+				return Vector2(INF, -INF)
+		else:
+			var first := (low - position4[axis]) / direction[axis]
+			var last := (high - position4[axis]) / direction[axis]
+			interval.x = maxf(interval.x, minf(first, last))
+			interval.y = minf(interval.y, maxf(first, last))
+	return interval
+
+func _clip_depth_motion(amount: float, interval: Vector2) -> float:
+	if interval.y - interval.x <= Geometry.EPSILON:
+		return amount
+	if amount > 0.0 and interval.y > Geometry.EPSILON:
+		return minf(amount, maxf(0.0, interval.x))
+	if amount < 0.0 and interval.x < -Geometry.EPSILON:
+		return maxf(amount, minf(0.0, interval.y))
+	return amount
 
 func _move_axis(axis: int, amount: float) -> void:
 	# Small swept increments prevent tunneling through thin 4D obstacles.
@@ -218,17 +255,16 @@ func _move_axis(axis: int, amount: float) -> void:
 					grounded = step < 0.0
 					vertical_speed = 0.0
 
-func request_fold() -> bool:
-	if rotating or paused or completed or not started:
+## Holding Q/E changes the angle at a fixed rate; release keeps the current slice.
+func rotate_slice(direction: float, delta: float) -> bool:
+	if is_zero_approx(direction) or delta <= 0.0 or paused or completed or not started or not grounded:
+		rotating = false
 		return false
-	if not grounded:
-		hud.show_toast("Touch down before folding.")
-		return false
+	if not rotating:
+		sound.play_fold()
 	rotating = true
-	rotation_elapsed = 0.0
-	rotation_from = angle
-	rotation_to = PI / 2.0 if active_axis == 0 else 0.0
-	sound.play_fold()
+	angle = wrapf(angle + clampf(direction, -1.0, 1.0) * ROTATION_SPEED * delta, -PI, PI)
+	active_axis = 1 if absf(sin(angle)) > absf(cos(angle)) else 0
 	return true
 
 func _check_objectives() -> void:
@@ -269,7 +305,7 @@ func _start() -> void:
 	started = true
 	paused = false
 	hud.hide_title()
-	hud.show_toast("Find the echoes. Reach the amber gate. Q / E folds the world.")
+	hud.show_toast("Find the echoes. Reach the amber gate. Hold Q / E to turn your slice.")
 
 func _restart() -> void:
 	_load_level(level_index)
