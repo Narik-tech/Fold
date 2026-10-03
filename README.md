@@ -4,7 +4,9 @@ A playable, original four-dimensional puzzle platformer made in Godot. Explore f
 
 Inspired by the spatial navigation described by [Miegakure](https://miegakure.com/). FOLD has its own levels, visuals, character, and synthesized audio.
 
-![A hidden bridge revealed in the fourth dimension](docs/preview.png)
+![The folded ascent: the traveler on solid 4D platforms in the 90-degree W slice, with five-chapter navigation and echo progress](docs/preview.png)
+
+The folded ascent, shown in-game: jump between solid 4D shapes and fold between Z and W to reveal the route.
 
 ## Play
 
