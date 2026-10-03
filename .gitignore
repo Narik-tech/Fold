@@ -4,3 +4,4 @@ builds/
 test-output/*
 !test-output/.gdignore
 *.tmp
+docs/ITCH_PAGE.md
