@@ -1,5 +1,7 @@
 # FOLD — The Quiet Dimension
 
+[License: GPL-3.0-only (copyleft)](LICENSE)
+
 A playable, original four-dimensional puzzle platformer made in Godot. Explore five floating gardens, collect their echoes, and find the amber gate. Folding continuously rotates the view through Z and W, exposing paths that lie outside your current three-dimensional slice.
 
 Inspired by the spatial navigation described by [Miegakure](https://miegakure.com/). FOLD has its own levels, visuals, character, and synthesized audio.
@@ -113,3 +115,11 @@ Run `--script tests/editor_preview.gd` without `--headless` to capture the edito
 Run `--script tests/shape_preview.gd` without `--headless` to capture all six edge frame samples and the 120-cell during folding. Use `--script tests/solid_shape_preview.gd` for the six solid faces samples and the solid 120-cell at additional fold angles. When running tests in a restricted environment, add `--log-file C:/MyProjects/Fold/test-output/test.log` if Godot cannot write its default user log.
 
 To run a saved custom garden directly, append `-- --level=res://levels/custom/my_garden.tres`. For a persistent F5 override, assign a `FoldLevel` resource to the main scene's **Level Override** property in the Inspector. The campaign list is explicit in `scripts/level_data.gd`, so saving a draft never silently adds it to the campaign.
+
+## License
+
+FOLD's source code, original assets, levels, and documentation are licensed under the **GNU General Public License, version 3 only** (`GPL-3.0-only`), a copyleft license.
+
+You may use, study, modify, and share FOLD under the terms of GPLv3. Redistributions must preserve license notices and provide corresponding source code as required by the license. FOLD is provided without warranty. See [LICENSE](LICENSE) for the full terms.
+
+Godot is a separate dependency and retains its own license.
