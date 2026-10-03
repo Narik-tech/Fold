@@ -219,7 +219,7 @@ jobs:
               def smoke(label, prefix, arguments):
                   log = logs / f"{label}.log"
                   result = subprocess.run(
-                      [*prefix, str(executable), "--path", str(executable.parent), "--quit-after", "60", "--log-file", str(log), *arguments],
+                      [*prefix, str(executable), "--quit-after", "60", "--log-file", str(log), *arguments],
                       cwd=executable.parent, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180,
                   )
                   print(result.stdout, flush=True)
