@@ -317,7 +317,10 @@ jobs:
           assets.append(checksums)
           notes = pathlib.Path(os.environ["RUNNER_TEMP"]) / "fold-release-notes.md"
           notes.write_text(pathlib.Path("distribution/RELEASE_NOTES.md").read_text(encoding="utf-8") + f"\n\nSource commit: `{sha}`. Built with Godot {os.environ['GODOT_VERSION']}-stable.\n", encoding="utf-8")
-          print(run("gh", "release", "create", tag, "--repo", repository, "--verify-tag", "--target", sha, "--draft", "--title", f"FOLD {tag}", "--notes-file", str(notes)))
+          # The existing, verified tag already pins the release source. Supplying
+          # --target can require workflows:write for older commits, a permission
+          # unavailable to GITHUB_TOKEN, even though no tag is being created.
+          print(run("gh", "release", "create", tag, "--repo", repository, "--verify-tag", "--draft", "--title", f"FOLD {tag}", "--notes-file", str(notes)))
           run("gh", "release", "upload", tag, *(str(path) for path in assets), "--repo", repository)
           release = json.loads(run("gh", "release", "view", tag, "--repo", repository, "--json", "assets,isDraft"))
           uploaded = {asset["name"]: asset["size"] for asset in release["assets"]}

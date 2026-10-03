@@ -60,6 +60,13 @@ the changes, create a new `vMAJOR.MINOR.PATCH` tag, and push that tag. Tags must
 identify the exact source used for the binaries. The workflow also accepts a
 manual dispatch with an existing tag. It does not overwrite existing releases.
 
+The publish command uses `--verify-tag` and checks that the existing tag resolves
+to the built commit. It deliberately omits `--target`: GitHub can require a
+workflow-write permission when an explicit target has different workflow files
+from the default branch, and `GITHUB_TOKEN` cannot receive that permission.
+For an existing tag, `--target` does not determine the released source. See
+[GitHub's release API documentation](https://docs.github.com/en/rest/releases/releases#create-a-release).
+
 Godot notices in `distribution/GODOT_LICENSE.txt` and `GODOT_COPYRIGHT.txt` come
 from the official `godotengine/godot` **4.6-stable** source tag. Refresh them when
 upgrading the engine.
