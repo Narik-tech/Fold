@@ -12,6 +12,11 @@ The folded ascent, shown in-game: jump between solid 4D shapes and fold between 
 
 ## Play
 
+Download a standalone **Windows or Linux (64-bit Intel/AMD)** build from
+[GitHub Releases](https://github.com/Narik-tech/Fold/releases/latest). Extract the
+entire archive, then run `Fold.exe` on Windows or `./Fold.x86_64` on Linux. Keep
+`Fold.pck` beside the executable. No Godot installation is needed.
+
 On this Windows workspace, double-click **PLAY.cmd**. A portable Godot 4.6 engine is already available in `.tools/godot`.
 
 Choose **Jump the 4D shapes →** on the title screen, or press **Escape → 05** during play, for **The folded ascent**. Jump across thirteen solid 4D shapes, fold between Z and W to reveal the route, and reach the summit gate. All twelve crossings require jumps; five echoes on broad tesseracts save checkpoints along the way.
@@ -117,6 +122,8 @@ Run `--script tests/shape_preview.gd` without `--headless` to capture all six ed
 To run a saved custom garden directly, append `-- --level=res://levels/custom/my_garden.tres`. For a persistent F5 override, assign a `FoldLevel` resource to the main scene's **Level Override** property in the Inspector. The campaign list is explicit in `scripts/level_data.gd`, so saving a draft never silently adds it to the campaign.
 
 ## License
+
+See [docs/RELEASING.md](docs/RELEASING.md) for desktop build and release instructions.
 
 FOLD's source code, original assets, levels, and documentation are licensed under the **GNU General Public License, version 3 only** (`GPL-3.0-only`), a copyleft license.
 

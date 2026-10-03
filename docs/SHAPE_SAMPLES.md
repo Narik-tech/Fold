@@ -28,7 +28,7 @@ The route goes around the filled volume. Walking directly toward the center is b
 
 Walk along X toward the first echo at the center. Press **Q** or **E** to expose W, then walk to **W +1.5** for the second echo. Return to **W 0** and continue to the amber gate at **X +6**. Keep the starting Z coordinate while following this route. The floor intersects the lower part of each frame so you can walk into its interior and around its beams.
 
-The tesseract frame begins at its near cubic side, with the shape centered at **W +2.5**. Folding reveals the direction connecting that side to the far side. Other frames begin at **W 0** through their centers.
+The tesseract frame begins at its near cubic side, with the shape centered at **W +2.5**. Its low beams require a short detour: at **X -6**, walk to **W +1.5** before crossing to **X 0**. Collect both center echoes, return to **W +1.5**, and cross to **X +6** before returning to the gate at **W 0**. Folding reveals the direction connecting the near side to the far side. Other frames begin at **W 0** through their centers.
 
 ## What the slice shows
 

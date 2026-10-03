@@ -14,17 +14,18 @@ script = ExtResource("3_shape")
 kind = "600-cell"
 center = Vector4(0, 2, 0, 0)
 scale = 5.0
-edge_thickness = 0.5
+edge_thickness = 0.12
 
 [resource]
 script = ExtResource("1_level")
 title = "Shape sample / 600-cell"
 subtitle = "Six hundred cells, open space within."
 lesson = "Explore the 120-cell's dual: a dense network of tetrahedral cells represented by their solid edges alone."
-hints = Array[String](["Walk toward the center echo through a gap between the solid edge beams.", "At X 0, press Q or E and move to W +1.5 to inspect another slice and collect its echo.", "Return to W 0 and cross the open frame to the amber gate at X +6."])
+hints = Array[String](["Walk toward the center echo through a gap between the solid edge beams.", "At X 0, hold E to 90 degrees, release, then move to W +1.5 to inspect another slice and collect its echo.", "Return to W 0 and cross the open frame to the amber gate at X +6."])
 start = Vector4(-6, 0, 0, 0)
 goal = Vector4(6, 0, 0, 0)
 goal_hint = "Visit the two echoes inside the frame and finish at W 0."
 boxes = Array[ExtResource("2_box")]([SubResource("Resource_b2xf3")])
 shapes = Array[ExtResource("3_shape")]([SubResource("Resource_kym0o")])
 seeds = Array[Vector4]([Vector4(0, 0.85, 0, 0), Vector4(0, 0.85, 0, 1.5)])
+solution = Array[Vector4]([Vector4(-6, 0, 0, 0), Vector4(0, 0, 0, 0), Vector4(0, 0, 0, 1.5), Vector4(0, 0, 0, 0), Vector4(6, 0, 0, 0)])

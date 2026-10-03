@@ -1,0 +1,329 @@
+name: Build and release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing version tag to build and publish (for example v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.6"
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-2022
+            preset: Windows Desktop
+            executable: Fold.exe
+          - platform: linux
+            os: ubuntu-24.04
+            preset: Linux
+            executable: Fold.x86_64
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+    env:
+      BUILD_PLATFORM: ${{ matrix.platform }}
+      EXPORT_PRESET: ${{ matrix.preset }}
+      GAME_EXECUTABLE: ${{ matrix.executable }}
+    steps:
+      - name: Check out the requested tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify source tag
+        id: source
+        shell: python
+        run: |
+          import os, re, subprocess
+          tag = os.environ["RELEASE_TAG"]
+          if not re.fullmatch(r"v\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?", tag):
+              raise SystemExit("Expected a version tag such as v0.1.0")
+          def git(*args):
+              return subprocess.check_output(["git", *args], text=True).strip()
+          sha = git("rev-parse", "HEAD")
+          if git("rev-parse", f"refs/tags/{tag}^{{commit}}") != sha:
+              raise SystemExit("The requested tag does not match the checkout")
+          if os.environ["GITHUB_EVENT_NAME"] == "push" and sha != os.environ["GITHUB_SHA"]:
+              raise SystemExit("The tag moved after the triggering push")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"sha={sha}\n")
+          print(f"Building {tag} at {sha}")
+
+      - name: Install Linux graphics smoke-test dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y xvfb libgl1-mesa-dri libglx-mesa0 libegl1
+
+      - name: Install verified official Godot editor and templates
+        shell: python
+        run: |
+          import hashlib, os, pathlib, shutil, subprocess, time, urllib.request, zipfile
+          version = os.environ["GODOT_VERSION"]
+          platform = os.environ["BUILD_PLATFORM"]
+          release = f"{version}-stable"
+          base = f"https://github.com/godotengine/godot-builds/releases/download/{release}/"
+          staging = pathlib.Path(os.environ["RUNNER_TEMP"]) / "godot-downloads"
+          staging.mkdir(parents=True, exist_ok=True)
+          editor_name = f"Godot_v{release}_" + ("win64.exe.zip" if platform == "windows" else "linux.x86_64.zip")
+          templates_name = f"Godot_v{release}_export_templates.tpz"
+          def download(name):
+              destination = staging / name
+              for attempt in range(3):
+                  try:
+                      request = urllib.request.Request(base + name, headers={"User-Agent": "FOLD-release"})
+                      with urllib.request.urlopen(request, timeout=180) as response, destination.open("wb") as output:
+                          shutil.copyfileobj(response, output, length=1024 * 1024)
+                      return destination
+                  except Exception:
+                      if attempt == 2:
+                          raise
+                      time.sleep(5 * (attempt + 1))
+          checksums = {}
+          for line in download("SHA512-SUMS.txt").read_text(encoding="utf-8").splitlines():
+              digest, filename = line.split(maxsplit=1)
+              checksums[filename.lstrip("*")] = digest.lower()
+          for name in (editor_name, templates_name):
+              path = download(name)
+              with path.open("rb") as source:
+                  actual = hashlib.file_digest(source, "sha512").hexdigest()
+              if actual != checksums.get(name):
+                  raise SystemExit(f"SHA512 verification failed: {name}")
+              print(f"Verified SHA512: {name}")
+          editor_dir = staging / "editor"
+          with zipfile.ZipFile(staging / editor_name) as archive:
+              archive.extractall(editor_dir)
+          if platform == "windows":
+              data_dir = pathlib.Path(os.environ["APPDATA"]) / "Godot"
+              editor = editor_dir / f"Godot_v{release}_win64_console.exe"
+          else:
+              data_dir = pathlib.Path(os.environ.get("XDG_DATA_HOME", str(pathlib.Path.home() / ".local/share"))) / "godot"
+              editor = editor_dir / f"Godot_v{release}_linux.x86_64"
+              editor.chmod(0o755)
+          templates_dir = data_dir / "export_templates" / f"{version}.stable"
+          templates_dir.mkdir(parents=True, exist_ok=True)
+          with zipfile.ZipFile(staging / templates_name) as archive:
+              if archive.read("templates/version.txt").decode().strip() != f"{version}.stable":
+                  raise SystemExit("Unexpected export-template version")
+              # Only the native desktop templates are needed by this runner.
+              prefix = "windows_" if platform == "windows" else "linux_"
+              for member in archive.infolist():
+                  name = pathlib.PurePosixPath(member.filename).name
+                  if name == "version.txt" or (name.startswith(prefix) and "x86_64" in name):
+                      with archive.open(member) as source, (templates_dir / name).open("wb") as output:
+                          shutil.copyfileobj(source, output)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
+              output.write(f"GODOT_EDITOR={editor}\n")
+          subprocess.run([str(editor), "--version"], check=True, timeout=30)
+
+      - name: Import, run regression tests, and export
+        shell: python
+        run: |
+          import os, pathlib, re, subprocess
+          editor = os.environ["GODOT_EDITOR"]
+          root = pathlib.Path.cwd()
+          logs = root / "test-output" / "release"
+          logs.mkdir(parents=True, exist_ok=True)
+          def run_godot(label, arguments, timeout=600, allow_shutdown_resource_warning=False):
+              log = logs / f"{label}.log"
+              command = [editor, "--headless", "--path", str(root), "--log-file", str(log), *arguments]
+              result = subprocess.run(command, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout)
+              print(result.stdout, flush=True)
+              result.check_returncode()
+              text = result.stdout + (log.read_text(encoding="utf-8", errors="replace") if log.exists() else "")
+              errors = re.findall(r"^(?:SCRIPT ERROR|ERROR):.*$", text, flags=re.MULTILINE)
+              if allow_shutdown_resource_warning:
+                  # Existing geometry tests can leave cached Resources at shutdown.
+                  # Their assertions must still pass, and all other errors are fatal.
+                  errors = [line for line in errors if not re.fullmatch(r"ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.", line.strip())]
+              if errors:
+                  raise SystemExit(f"Godot reported errors during {label}")
+          run_godot("import", ["--editor", "--import"])
+          tests = sorted((root / "tests").glob("test_*.gd"))
+          if len(tests) < 17:
+              raise SystemExit("Expected all 17 existing regression scripts")
+          for test in tests:
+              run_godot(test.stem, ["--script", str(test)], allow_shutdown_resource_warning=True)
+          destination = root / "builds" / os.environ["BUILD_PLATFORM"]
+          destination.mkdir(parents=True, exist_ok=True)
+          run_godot("export", ["--export-release", os.environ["EXPORT_PRESET"], str(destination / os.environ["GAME_EXECUTABLE"])])
+          for name in (os.environ["GAME_EXECUTABLE"], "Fold.pck"):
+              if not (destination / name).is_file():
+                  raise SystemExit(f"Export is missing {name}")
+
+      - name: Package player download
+        shell: python
+        run: |
+          import os, subprocess, sys
+          platform = os.environ["BUILD_PLATFORM"]
+          subprocess.run([
+              sys.executable, "scripts/package_release.py",
+              "--platform", platform,
+              "--version", os.environ["RELEASE_TAG"],
+              "--build-dir", f"builds/{platform}",
+              "--output-dir", "builds/release",
+          ], check=True)
+
+      - name: Smoke-test extracted player download
+        shell: python
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          import os, pathlib, re, subprocess, tarfile, tempfile, zipfile
+          platform = os.environ["BUILD_PLATFORM"]
+          suffix = "zip" if platform == "windows" else "tar.gz"
+          archive_path = pathlib.Path("builds/release") / f"FOLD-{os.environ['RELEASE_TAG']}-{platform}-x86_64.{suffix}"
+          logs = pathlib.Path("test-output/release").resolve()
+          with tempfile.TemporaryDirectory(prefix="fold-package-", dir=os.environ["RUNNER_TEMP"]) as folder:
+              extracted = pathlib.Path(folder)
+              if platform == "windows":
+                  with zipfile.ZipFile(archive_path) as archive:
+                      archive.extractall(extracted)
+              else:
+                  with tarfile.open(archive_path) as archive:
+                      archive.extractall(extracted, filter="data")
+              executables = list(extracted.rglob(os.environ["GAME_EXECUTABLE"]))
+              if len(executables) != 1:
+                  raise SystemExit("Player archive must contain exactly one game executable")
+              executable = executables[0]
+              if platform == "linux" and not os.access(executable, os.X_OK):
+                  raise SystemExit("Linux archive did not preserve executable permissions")
+              def smoke(label, prefix, arguments):
+                  log = logs / f"{label}.log"
+                  result = subprocess.run(
+                      [*prefix, str(executable), "--path", str(executable.parent), "--quit-after", "60", "--log-file", str(log), *arguments],
+                      cwd=executable.parent, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180,
+                  )
+                  print(result.stdout, flush=True)
+                  result.check_returncode()
+                  if not log.exists():
+                      raise SystemExit(f"{label} did not produce a Godot startup log")
+                  text = result.stdout + log.read_text(encoding="utf-8", errors="replace")
+                  if re.search(r"(?:^|\n)(?:SCRIPT ERROR|ERROR):", text):
+                      raise SystemExit(f"Godot reported errors during {label}")
+              smoke("packaged-headless", [], ["--headless"])
+              if platform == "linux":
+                  smoke("packaged-opengl", ["xvfb-run", "-a", "-s", "-screen 0 1280x800x24"], ["--rendering-method", "gl_compatibility", "--audio-driver", "Dummy", "--resolution", "1280x800", "--windowed"])
+
+      - name: Upload verified player download
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            builds/release/*.zip
+            builds/release/*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload build and smoke-test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.platform }}
+          path: test-output/release/*.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  publish:
+    name: Publish verified release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the exact built source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download both verified player archives
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: builds/release
+          merge-multiple: true
+
+      - name: Assemble source and checksums, then publish
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILT_SHA: ${{ needs.build.outputs.source_sha }}
+        run: |
+          import hashlib, json, os, pathlib, subprocess, urllib.error, urllib.parse, urllib.request
+          tag = os.environ["RELEASE_TAG"]
+          sha = os.environ["BUILT_SHA"]
+          repository = os.environ["GITHUB_REPOSITORY"]
+          def run(*args):
+              return subprocess.run(list(args), check=True, text=True, stdout=subprocess.PIPE).stdout.strip()
+          if run("git", "rev-parse", "HEAD") != sha or run("git", "rev-parse", f"refs/tags/{tag}^{{commit}}") != sha:
+              raise SystemExit("Release tag no longer matches the exact built commit")
+          api_url = f"{os.environ['GITHUB_API_URL']}/repos/{repository}/releases/tags/{urllib.parse.quote(tag, safe='')}"
+          request = urllib.request.Request(api_url, headers={
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+          })
+          try:
+              with urllib.request.urlopen(request, timeout=30):
+                  raise SystemExit(f"Release {tag} already exists; refusing to overwrite it")
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+          destination = pathlib.Path("builds/release")
+          expected = {f"FOLD-{tag}-windows-x86_64.zip", f"FOLD-{tag}-linux-x86_64.tar.gz"}
+          if {path.name for path in destination.iterdir()} != expected:
+              raise SystemExit("Expected exactly the verified Windows and Linux downloads")
+          source_archive = destination / f"FOLD-{tag}-source.tar.gz"
+          run("git", "archive", "--format=tar.gz", f"--prefix=FOLD-{tag}-source/", f"--output={source_archive}", sha)
+          assets = sorted(destination.iterdir())
+          checksums = destination / "SHA256SUMS.txt"
+          with checksums.open("w", encoding="utf-8", newline="\n") as output:
+              for path in assets:
+                  with path.open("rb") as source:
+                      digest = hashlib.file_digest(source, "sha256").hexdigest()
+                  output.write(f"{digest}  {path.name}\n")
+          assets.append(checksums)
+          notes = pathlib.Path(os.environ["RUNNER_TEMP"]) / "fold-release-notes.md"
+          notes.write_text(pathlib.Path("distribution/RELEASE_NOTES.md").read_text(encoding="utf-8") + f"\n\nSource commit: `{sha}`. Built with Godot {os.environ['GODOT_VERSION']}-stable.\n", encoding="utf-8")
+          print(run("gh", "release", "create", tag, "--repo", repository, "--verify-tag", "--target", sha, "--draft", "--title", f"FOLD {tag}", "--notes-file", str(notes)))
+          run("gh", "release", "upload", tag, *(str(path) for path in assets), "--repo", repository)
+          release = json.loads(run("gh", "release", "view", tag, "--repo", repository, "--json", "assets,isDraft"))
+          uploaded = {asset["name"]: asset["size"] for asset in release["assets"]}
+          if not release["isDraft"] or uploaded != {path.name: path.stat().st_size for path in assets}:
+              raise SystemExit("Draft release assets failed verification; leaving the draft unpublished")
+          run("gh", "release", "edit", tag, "--repo", repository, "--draft=false", "--latest")
+          url = run("gh", "release", "view", tag, "--repo", repository, "--json", "url", "--jq", ".url")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write(f"Published [FOLD {tag}]({url}) with verified Windows and Linux downloads, source, and SHA256 checksums.\n")

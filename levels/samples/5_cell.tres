@@ -28,3 +28,4 @@ goal_hint = "Explore the center and W +1.5, then return to W 0."
 boxes = Array[ExtResource("2_box")]([SubResource("Resource_fkwda")])
 shapes = Array[ExtResource("3_shape")]([SubResource("Resource_tonlq")])
 seeds = Array[Vector4]([Vector4(0, 0.85, 0.65, 0), Vector4(0, 0.85, 0.65, 1.5)])
+solution = Array[Vector4]([Vector4(-6, 0, 0.65, 0), Vector4(0, 0, 0.65, 0), Vector4(0, 0, 0.65, 1.5), Vector4(0, 0, 0.65, 0), Vector4(6, 0, 0.65, 0)])
